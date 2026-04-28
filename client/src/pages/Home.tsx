@@ -88,14 +88,14 @@ function StatCard({
               <Skeleton className="h-8 w-20 mt-2" />
             ) : (
               <p
-                className="mt-1.5 text-3xl font-bold tracking-tight text-foreground truncate"
+                className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-foreground break-words"
                 data-testid={`${testId}-value`}
               >
                 {value}
               </p>
             )}
             {description && !isLoading && (
-              <p className="mt-1 text-xs text-muted-foreground truncate">
+              <p className="mt-1 text-xs text-muted-foreground break-words">
                 {description}
               </p>
             )}
