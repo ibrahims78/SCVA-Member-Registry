@@ -341,7 +341,15 @@ export async function registerRoutes(
       const member = await storage.getMember(paramId(req));
       if (!member) return res.status(404).json({ message: "Member not found" });
 
-      const chromePath = process.env.CHROME_PATH || "/usr/bin/chromium";
+      const { execSync } = await import("child_process");
+      let chromePath = process.env.CHROME_PATH;
+      if (!chromePath) {
+        try {
+          chromePath = execSync("which chromium", { encoding: "utf8" }).trim();
+        } catch {
+          chromePath = "/usr/bin/chromium";
+        }
+      }
 
       browser = await puppeteer.launch({
         executablePath: chromePath,
