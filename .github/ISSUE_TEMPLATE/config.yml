@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔐 Security Vulnerability
+    url: https://github.com/security/advisories
+    about: للإبلاغ عن ثغرة أمنية، راجع SECURITY.md / For security issues, see SECURITY.md
+  - name: 💬 Discussions
+    url: ../../discussions
+    about: للأسئلة العامّة والنقاشات / For general questions and discussions
