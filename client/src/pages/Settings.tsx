@@ -499,6 +499,12 @@ export default function Settings() {
                     <span>فشل: <strong>{importResult.failed}</strong></span>
                   </div>
                 )}
+                {importResult.skipped !== undefined && importResult.skipped > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>تمّ تجاهل (موجود مسبقاً): <strong>{importResult.skipped}</strong></span>
+                  </div>
+                )}
               </div>
               {importResult.errors.length > 0 && (
                 <div className="rounded-md bg-destructive/5 border border-destructive/20 p-3 space-y-1 max-h-40 overflow-y-auto">

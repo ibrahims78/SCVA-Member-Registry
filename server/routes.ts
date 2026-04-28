@@ -299,7 +299,22 @@ export async function registerRoutes(
       if (!Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
       }
-      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      // Build a name lookup of existing members to skip duplicates
+      const existing = await storage.getMembers();
+      const existingNames = new Set<string>(
+        existing.map(
+          (m) =>
+            `${(m.firstName || "").trim()}_${(m.lastName || "").trim()}`.toLowerCase(),
+        ),
+      );
+
+      const results = {
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
       for (const row of rows) {
         const parsed = insertMemberSchema.safeParse(row);
         if (!parsed.success) {
@@ -307,14 +322,22 @@ export async function registerRoutes(
           results.errors.push(
             `الصف (${row.firstName || "?"} ${row.lastName || "?"}): ${JSON.stringify(parsed.error.flatten().fieldErrors)}`
           );
-        } else {
-          try {
-            await storage.createMember(parsed.data);
-            results.success++;
-          } catch {
-            results.failed++;
-            results.errors.push(`فشل حفظ: ${row.firstName || ""} ${row.lastName || ""}`);
-          }
+          continue;
+        }
+
+        const nameKey = `${(parsed.data.firstName || "").trim()}_${(parsed.data.lastName || "").trim()}`.toLowerCase();
+        if (existingNames.has(nameKey)) {
+          results.skipped++;
+          continue;
+        }
+
+        try {
+          await storage.createMember(parsed.data);
+          existingNames.add(nameKey);
+          results.success++;
+        } catch {
+          results.failed++;
+          results.errors.push(`فشل حفظ: ${row.firstName || ""} ${row.lastName || ""}`);
         }
       }
       res.json(results);
