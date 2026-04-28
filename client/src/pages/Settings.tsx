@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, UserPlus, Pencil, Trash2, ShieldCheck,
   FileSpreadsheet, Download, Upload, DatabaseBackup,
-  CheckCircle2, AlertCircle, X,
+  CheckCircle2, AlertCircle, X, Receipt,
 } from "lucide-react";
 import { useState, useRef } from "react";
 import { z } from "zod";
@@ -50,6 +50,16 @@ const IMPORT_COLUMNS = [
   { key: "escId",         label: "معرّف الجمعية الأوروبية",example: "" },
 ];
 
+const SUB_IMPORT_COLUMNS = [
+  { key: "membershipNumber", label: "رقم العضوية",    example: "1" },
+  { key: "firstName",        label: "الاسم الأول",    example: "محمد" },
+  { key: "lastName",         label: "الكنية",         example: "الأحمد" },
+  { key: "year",             label: "سنة الاشتراك *", example: "2024" },
+  { key: "amount",           label: "المبلغ (ل.س) *", example: "50000" },
+  { key: "date",             label: "تاريخ الدفع *",  example: "2024-03-15" },
+  { key: "notes",            label: "ملاحظات",        example: "دُفع نقداً" },
+];
+
 interface ImportResult {
   success: number;
   failed: number;
@@ -63,8 +73,11 @@ export default function Settings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [subImportResult, setSubImportResult] = useState<ImportResult | null>(null);
+  const [isSubImporting, setIsSubImporting] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const subFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: users, isLoading } = useQuery<any[]>({ queryKey: ["/api/users"] });
   const { data: currentUser } = useQuery<any>({ queryKey: ["/api/user"] });
@@ -221,6 +234,93 @@ export default function Settings() {
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // ---- Subscriptions template download ----
+  const downloadSubTemplate = () => {
+    const headers = SUB_IMPORT_COLUMNS.map((c) => c.label);
+    const example = SUB_IMPORT_COLUMNS.map((c) => c.example);
+    const notes = SUB_IMPORT_COLUMNS.map((c) =>
+      c.key === "year"
+        ? "رقم السنة الميلادية مثل 2024"
+        : c.key === "amount"
+        ? "رقم صحيح بالليرة السورية"
+        : c.key === "date"
+        ? "الصيغة: YYYY-MM-DD"
+        : c.key === "membershipNumber"
+        ? "مُفضَّل للمطابقة الدقيقة"
+        : c.key === "firstName" || c.key === "lastName"
+        ? "بديل عند غياب رقم العضوية"
+        : ""
+    );
+    const ws = XLSX.utils.aoa_to_sheet([headers, example, notes]);
+    ws["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "نموذج الاشتراكات");
+    XLSX.writeFile(wb, "نموذج-استيراد-الاشتراكات.xlsx");
+    toast({ title: "تم تحميل نموذج الاشتراكات" });
+  };
+
+  // ---- Subscriptions file import ----
+  const handleSubFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubImportResult(null);
+    setIsSubImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      if (rawRows.length < 2) {
+        toast({ title: "الملف فارغ", variant: "destructive" });
+        setIsSubImporting(false);
+        return;
+      }
+
+      const headerRow = rawRows[0] as string[];
+      const dataRows = rawRows.slice(1).filter((r) => r.some((c) => c !== undefined && c !== ""));
+
+      const colIndexMap: Record<string, number> = {};
+      SUB_IMPORT_COLUMNS.forEach((col) => {
+        const idx = headerRow.findIndex((h) => String(h).trim() === col.label);
+        if (idx !== -1) colIndexMap[col.key] = idx;
+      });
+
+      const rows = dataRows.map((row) => {
+        const obj: Record<string, any> = {};
+        SUB_IMPORT_COLUMNS.forEach((col) => {
+          const idx = colIndexMap[col.key];
+          if (idx !== undefined && row[idx] !== undefined && row[idx] !== "") {
+            obj[col.key] = col.key === "year" || col.key === "amount"
+              ? Number(row[idx])
+              : String(row[idx]).trim();
+          }
+        });
+        return obj;
+      });
+
+      const res = await fetch("/api/subscriptions/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rows),
+      });
+      const result: ImportResult = await res.json();
+      setSubImportResult(result);
+      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
+      if (result.success > 0) {
+        toast({
+          title: "اكتمل استيراد الاشتراكات",
+          description: `تمّ استيراد ${result.success} اشتراك بنجاح${result.failed > 0 ? `، فشل ${result.failed}` : ""}.`,
+        });
+      }
+    } catch {
+      toast({ title: "خطأ في قراءة الملف", variant: "destructive" });
+    } finally {
+      setIsSubImporting(false);
+      if (subFileInputRef.current) subFileInputRef.current.value = "";
     }
   };
 
@@ -402,6 +502,107 @@ export default function Settings() {
               {importResult.errors.length > 0 && (
                 <div className="rounded-md bg-destructive/5 border border-destructive/20 p-3 space-y-1 max-h-40 overflow-y-auto">
                   {importResult.errors.map((e, i) => (
+                    <p key={i} className="text-xs text-destructive font-mono">{e}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ===== Subscriptions Import ===== */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">استيراد الاشتراكات السنوية</CardTitle>
+              <CardDescription>رفع ملف Excel يحتوي على اشتراكات الأعضاء وربطها تلقائياً بسجلاتهم.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <p className="text-sm font-medium">طريقة المطابقة مع الأعضاء:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <span className="text-primary font-bold mt-0.5">①</span>
+                <span><strong>رقم العضوية</strong> — الأدق والأسرع (موصى به)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-primary font-bold mt-0.5">②</span>
+                <span><strong>الاسم الأول + الكنية</strong> — بديل تلقائي</span>
+              </div>
+            </div>
+            <div className="border-t pt-3">
+              <p className="text-sm font-medium mb-1.5">الحقول المطلوبة في الملف:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "رقم العضوية أو الاسم", note: "للمطابقة" },
+                  { label: "سنة الاشتراك", note: "مثل 2024" },
+                  { label: "المبلغ", note: "رقم صحيح" },
+                  { label: "تاريخ الدفع", note: "YYYY-MM-DD" },
+                ].map((f) => (
+                  <span key={f.label} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs">
+                    <strong>{f.label}</strong>
+                    <span className="text-muted-foreground">({f.note})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={downloadSubTemplate} className="gap-2">
+              <Download className="h-4 w-4" />
+              تحميل نموذج الاشتراكات
+            </Button>
+            <div className="relative">
+              <Button
+                variant="default"
+                onClick={() => subFileInputRef.current?.click()}
+                disabled={isSubImporting}
+                className="gap-2"
+              >
+                {isSubImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isSubImporting ? "جارٍ الاستيراد..." : "رفع ملف الاشتراكات"}
+              </Button>
+              <input
+                ref={subFileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleSubFileImport}
+              />
+            </div>
+          </div>
+
+          {subImportResult && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-sm">نتائج استيراد الاشتراكات</p>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSubImportResult(null)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>تمّ بنجاح: <strong>{subImportResult.success}</strong></span>
+                </div>
+                {subImportResult.failed > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>فشل: <strong>{subImportResult.failed}</strong></span>
+                  </div>
+                )}
+              </div>
+              {subImportResult.errors.length > 0 && (
+                <div className="rounded-md bg-destructive/5 border border-destructive/20 p-3 space-y-1 max-h-40 overflow-y-auto">
+                  {subImportResult.errors.map((e, i) => (
                     <p key={i} className="text-xs text-destructive font-mono">{e}</p>
                   ))}
                 </div>

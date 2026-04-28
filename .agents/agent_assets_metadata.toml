@@ -12,3 +12,9 @@ id = "N1ZVPoIJYn86C_3rRZzLO"
 uri = "file://اعضاء-تجريبيون-SCVA.xlsx"
 type = "table"
 title = "100 عضو تجريبي — محدّث"
+
+[[outputs]]
+id = "9EGyacBAB6W83c9ZxfvxS"
+uri = "file://اشتراكات-تجريبية-SCVA.xlsx"
+type = "table"
+title = "190 اشتراك تجريبي (2020–2024)"

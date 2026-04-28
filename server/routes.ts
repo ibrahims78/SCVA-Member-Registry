@@ -207,6 +207,72 @@ export async function registerRoutes(
     }
   });
 
+  // ---------- Subscriptions Bulk Import ----------
+  app.post("/api/subscriptions/import", requireAuth, async (req, res, next) => {
+    try {
+      const rows = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+
+      // Load all members once for lookup
+      const allMembers = await storage.getMembers();
+      const byNumber = new Map<number, typeof allMembers[0]>();
+      const byName = new Map<string, typeof allMembers[0]>();
+      for (const m of allMembers) {
+        if (m.membershipNumber) byNumber.set(m.membershipNumber, m);
+        const nameKey = `${(m.firstName || "").trim()}_${(m.lastName || "").trim()}`.toLowerCase();
+        byName.set(nameKey, m);
+      }
+
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      for (const row of rows) {
+        const rowLabel = `(${row.firstName || ""} ${row.lastName || ""} - ${row.year || ""})`;
+
+        // Resolve member
+        let member: typeof allMembers[0] | undefined;
+        if (row.membershipNumber) {
+          member = byNumber.get(Number(row.membershipNumber));
+        }
+        if (!member && row.firstName && row.lastName) {
+          const key = `${String(row.firstName).trim()}_${String(row.lastName).trim()}`.toLowerCase();
+          member = byName.get(key);
+        }
+        if (!member) {
+          results.failed++;
+          results.errors.push(`${rowLabel}: لم يُعثر على العضو في قاعدة البيانات`);
+          continue;
+        }
+
+        // Validate subscription fields
+        const parsed = insertSubscriptionSchema.safeParse({
+          year: row.year,
+          amount: row.amount,
+          date: row.date,
+          notes: row.notes || null,
+        });
+        if (!parsed.success) {
+          results.failed++;
+          results.errors.push(`${rowLabel}: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`);
+          continue;
+        }
+
+        try {
+          await storage.createSubscription({ ...parsed.data, memberId: member.id });
+          results.success++;
+        } catch {
+          results.failed++;
+          results.errors.push(`${rowLabel}: فشل الحفظ في قاعدة البيانات`);
+        }
+      }
+
+      res.json(results);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ---------- Members Bulk Import ----------
   app.post("/api/members/import", requireAuth, async (req, res, next) => {
     try {
