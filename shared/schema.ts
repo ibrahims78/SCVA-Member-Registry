@@ -1,13 +1,12 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("employee"), // "admin" or "employee"
+  role: text("role").notNull().default("employee"),
 });
 
 export const members = pgTable("members", {
@@ -30,27 +29,91 @@ export const members = pgTable("members", {
   membershipNumber: integer("membership_number").generatedAlwaysAsIdentity(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  role: true,
-});
-
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   memberId: varchar("member_id").references(() => members.id).notNull(),
-  year: text("year").notNull(),
-  amount: text("amount").notNull(),
+  year: integer("year").notNull(),
+  amount: integer("amount").notNull(),
   notes: text("notes"),
   date: text("date").notNull(),
 });
 
-export const insertMemberSchema = createInsertSchema(members);
-export const insertSubscriptionSchema = createInsertSchema(subscriptions);
-export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
-export type Subscription = typeof subscriptions.$inferSelect;
+export const genderEnum = z.enum(["male", "female"]);
+export const membershipTypeEnum = z.enum(["original", "associate"]);
+
+export const insertUserSchema = z.object({
+  username: z.string().min(3, "اسم المستخدم يجب أن يحتوي 3 أحرف على الأقل"),
+  password: z.string().min(6, "كلمة المرور يجب أن تحتوي 6 أحرف على الأقل"),
+  role: z.enum(["admin", "employee"]).optional(),
+});
+
+export const updateUserSchema = z
+  .object({
+    username: z.string().min(3).optional(),
+    password: z.string().min(6).optional(),
+    role: z.enum(["admin", "employee"]).optional(),
+  })
+  .strict();
+
+export const insertMemberSchema = z.object({
+  firstName: z.string().min(1, "الاسم الأول مطلوب"),
+  lastName: z.string().min(1, "الكنية مطلوبة"),
+  fullName: z.string().min(2, "الاسم الكامل مطلوب"),
+  fatherName: z.string().min(2, "اسم الأب مطلوب"),
+  englishName: z.string().min(2, "الاسم بالإنجليزية مطلوب"),
+  birthDate: z.string().min(1, "تاريخ الميلاد مطلوب"),
+  gender: genderEnum,
+  specialty: z.string().min(1, "التخصص مطلوب"),
+  email: z.string().email("بريد إلكتروني غير صالح"),
+  phone: z.string().min(5, "رقم الهاتف مطلوب"),
+  workAddress: z.string().min(2, "عنوان العمل مطلوب"),
+  city: z.string().min(1, "المدينة مطلوبة"),
+  joinDate: z.string().min(1, "تاريخ الانضمام مطلوب"),
+  membershipType: membershipTypeEnum,
+  escId: z.string().optional().nullable(),
+});
+
+export const updateMemberSchema = insertMemberSchema.partial();
+
+export const insertSubscriptionSchema = z.object({
+  year: z.coerce.number().int().min(1900).max(3000),
+  amount: z.coerce.number().int().nonnegative(),
+  notes: z.string().optional().nullable(),
+  date: z.string().min(1, "التاريخ مطلوب"),
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(1, "اسم المستخدم مطلوب"),
+  password: z.string().min(1, "كلمة المرور مطلوبة"),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type Member = typeof members.$inferSelect;
 export type InsertMember = z.infer<typeof insertMemberSchema>;
+export type UpdateMember = z.infer<typeof updateMemberSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 
+export type Gender = z.infer<typeof genderEnum>;
+export type MembershipType = z.infer<typeof membershipTypeEnum>;
+
+export type MemberWithSubscriptions = Member & {
+  subscriptions: Subscription[];
+};
+
+export const SPECIALTIES = [
+  { value: "cardiac_surgery", labelAr: "جراحة قلب", labelEn: "Cardiac Surgery" },
+  { value: "cardiology", labelAr: "قلبية داخلية", labelEn: "Cardiology" },
+] as const;
+
+export const GENDERS = [
+  { value: "male", labelAr: "ذكر", labelEn: "Male" },
+  { value: "female", labelAr: "أنثى", labelEn: "Female" },
+] as const;
+
+export const MEMBERSHIP_TYPES = [
+  { value: "original", labelAr: "أصيل", labelEn: "Original" },
+  { value: "associate", labelAr: "مشارك", labelEn: "Associate" },
+] as const;

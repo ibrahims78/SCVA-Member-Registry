@@ -1,48 +1,73 @@
-import { type User, type InsertUser, type Member, type Subscription } from "@shared/schema.ts";
-import { members, subscriptions, users } from "@shared/schema.ts";
-import { db } from "./db.ts";
+import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs"; // إضافة مكتبة التشفير
+import {
+  members,
+  subscriptions,
+  users,
+  type InsertMember,
+  type InsertSubscription,
+  type InsertUser,
+  type Member,
+  type Subscription,
+  type UpdateMember,
+  type UpdateUser,
+  type User,
+} from "@shared/schema";
+import { db } from "./db";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
-  updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
+  updateUser(id: string, user: UpdateUser): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
-  
-  // Member methods
+
   getMembers(): Promise<Member[]>;
   getMember(id: string): Promise<Member | undefined>;
-  createMember(member: any): Promise<Member>;
-  updateMember(id: string, member: any): Promise<Member | undefined>;
+  createMember(member: InsertMember): Promise<Member>;
+  updateMember(id: string, member: UpdateMember): Promise<Member | undefined>;
   deleteMember(id: string): Promise<void>;
-  
-  // Subscription methods
+
   getSubscriptionsByMemberId(memberId: string): Promise<Subscription[]>;
-  createSubscription(subscription: any): Promise<Subscription>;
+  createSubscription(
+    subscription: InsertSubscription & { memberId: string },
+  ): Promise<Subscription>;
 }
 
 export class DatabaseStorage implements IStorage {
   constructor() {
-    // تشغيل وظيفة التحقق من وجود المدير عند بدء التشغيل
-    this.initializeAdmin();
+    void this.initializeAdmin();
   }
 
-  async initializeAdmin() {
+  private async initializeAdmin() {
     try {
       const adminExists = await this.getUserByUsername("admin");
-      if (!adminExists) {
-        console.log("[STORAGE] مستخدم admin غير موجود، يتم إنشاؤه الآن...");
-        const hashedPassword = await bcrypt.hash("123456", 10);
-        await db.insert(users).values({
-          username: "admin",
-          password: hashedPassword,
-          role: "admin",
-        });
-        console.log("[STORAGE] تم إنشاء مستخدم admin الافتراضي بنجاح.");
+      if (adminExists) return;
+
+      const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+      if (!initialPassword) {
+        console.warn(
+          "[STORAGE] لا يوجد مستخدم admin ولم يتم ضبط ADMIN_INITIAL_PASSWORD. " +
+            "لتفعيل الحساب الافتراضي، عيّن المتغير ADMIN_INITIAL_PASSWORD ثم أعد التشغيل.",
+        );
+        return;
       }
+
+      if (initialPassword.length < 8) {
+        console.error(
+          "[STORAGE] ADMIN_INITIAL_PASSWORD يجب أن يحتوي 8 أحرف على الأقل. تم تخطّي إنشاء admin.",
+        );
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(initialPassword, 10);
+      await db.insert(users).values({
+        username: "admin",
+        password: hashedPassword,
+        role: "admin",
+      });
+      console.log("[STORAGE] تم إنشاء مستخدم admin من ADMIN_INITIAL_PASSWORD.");
     } catch (error) {
       console.error("[STORAGE] فشل في إنشاء مستخدم admin:", error);
     }
@@ -54,7 +79,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
     return user;
   }
 
@@ -67,10 +95,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users);
   }
 
-  async updateUser(id: string, userUpdates: Partial<User>): Promise<User | undefined> {
+  async updateUser(
+    id: string,
+    userUpdates: UpdateUser,
+  ): Promise<User | undefined> {
+    if (Object.keys(userUpdates).length === 0) {
+      return this.getUser(id);
+    }
     const [updatedUser] = await db
       .update(users)
-      .set(userUpdates)
+      .set(userUpdates as Partial<typeof users.$inferInsert>)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -89,15 +123,21 @@ export class DatabaseStorage implements IStorage {
     return member;
   }
 
-  async createMember(member: any): Promise<Member> {
+  async createMember(member: InsertMember): Promise<Member> {
     const [newMember] = await db.insert(members).values(member).returning();
     return newMember;
   }
 
-  async updateMember(id: string, memberUpdates: any): Promise<Member | undefined> {
+  async updateMember(
+    id: string,
+    memberUpdates: UpdateMember,
+  ): Promise<Member | undefined> {
+    if (Object.keys(memberUpdates).length === 0) {
+      return this.getMember(id);
+    }
     const [updatedMember] = await db
       .update(members)
-      .set(memberUpdates)
+      .set(memberUpdates as Partial<typeof members.$inferInsert>)
       .where(eq(members.id, id))
       .returning();
     return updatedMember;
@@ -109,11 +149,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSubscriptionsByMemberId(memberId: string): Promise<Subscription[]> {
-    return await db.select().from(subscriptions).where(eq(subscriptions.memberId, memberId));
+    return await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.memberId, memberId));
   }
 
-  async createSubscription(subscription: any): Promise<Subscription> {
-    const [newSub] = await db.insert(subscriptions).values(subscription).returning();
+  async createSubscription(
+    subscription: InsertSubscription & { memberId: string },
+  ): Promise<Subscription> {
+    const [newSub] = await db
+      .insert(subscriptions)
+      .values(subscription)
+      .returning();
     return newSub;
   }
 }

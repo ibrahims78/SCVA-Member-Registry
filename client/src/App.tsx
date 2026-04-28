@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { apiRequest, queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
@@ -7,12 +7,13 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { MembersProvider } from "@/context/MembersContext";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import type { User } from "@shared/schema";
 
 import Home from "./pages/Home";
 import Members from "./pages/Members";
@@ -31,26 +32,17 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-        setLocation("/");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "خطأ في تسجيل الدخول",
-          description: "اسم المستخدم أو كلمة المرور غير صحيحة",
-        });
-      }
-    } catch (error) {
+      await apiRequest("POST", "/api/login", { username, password });
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setLocation("/");
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "خطأ",
-        description: "فشل الاتصال بالخادم",
+        title: "خطأ في تسجيل الدخول",
+        description:
+          typeof error?.message === "string" && error.message
+            ? error.message.replace(/^\d+:\s*/, "")
+            : "اسم المستخدم أو كلمة المرور غير صحيحة",
       });
     } finally {
       setLoading(false);
@@ -96,10 +88,10 @@ function LoginPage() {
 }
 
 function Router() {
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/user"],
     queryFn: async () => {
-      const res = await fetch("/api/user");
+      const res = await fetch("/api/user", { credentials: "include" });
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json();

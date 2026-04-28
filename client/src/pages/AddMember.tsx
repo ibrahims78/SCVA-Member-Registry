@@ -77,16 +77,16 @@ export default function AddMember() {
           fatherName: member.fatherName,
           englishName: member.englishName,
           birthDate: member.birthDate,
-          gender: member.gender,
+          gender: member.gender as 'male' | 'female',
           specialty: member.specialty,
           email: member.email,
           phone: member.phone,
           workAddress: member.workAddress,
           city: member.city || '',
           joinDate: member.joinDate,
-          membershipType: member.membershipType,
+          membershipType: member.membershipType as 'original' | 'associate',
           escId: member.escId || '',
-          membershipNumber: member.membershipNumber || '',
+          membershipNumber: member.membershipNumber?.toString() || '',
         });
       } else {
         toast({ title: "Member not found", variant: "destructive" });
