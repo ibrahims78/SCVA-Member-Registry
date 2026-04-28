@@ -1,50 +1,95 @@
-import { useState } from 'react';
-import { useLanguage } from '@/context/LanguageContext';
-import { useMembers } from '@/context/MembersContext';
-import { Link } from 'wouter';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Eye, FileSpreadsheet, UserPlus } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { useMemo, useState } from "react";
+import { Link } from "wouter";
+import { useLanguage } from "@/context/LanguageContext";
+import { useMembers } from "@/context/MembersContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  X,
+  FileSpreadsheet,
+  UserPlus,
+  Users,
+  SearchX,
+  ArrowLeft,
+  ArrowRight,
+} from "lucide-react";
+import * as XLSX from "xlsx";
+import { cn } from "@/lib/utils";
+import { MEMBERSHIP_TYPES, SPECIALTIES } from "@/lib/types";
+
+const ALL_VALUE = "__all__";
 
 export default function Members() {
-  const { t, language } = useLanguage();
-  const { members } = useMembers();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { t, language, direction } = useLanguage();
+  const { members, isLoading } = useMembers();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [specialtyFilter, setSpecialtyFilter] = useState<string>(ALL_VALUE);
+  const [typeFilter, setTypeFilter] = useState<string>(ALL_VALUE);
 
-  const filteredMembers = members.filter(m => 
-    m.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.englishName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.membershipNumber?.toString().includes(searchTerm) ||
-    m.phone.includes(searchTerm)
-  );
+  const isAr = language === "ar";
+  const ArrowGo = direction === "rtl" ? ArrowLeft : ArrowRight;
+
+  const filteredMembers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return members.filter((m) => {
+      if (specialtyFilter !== ALL_VALUE && m.specialty !== specialtyFilter) return false;
+      if (typeFilter !== ALL_VALUE && m.membershipType !== typeFilter) return false;
+      if (!q) return true;
+      return (
+        m.fullName.toLowerCase().includes(q) ||
+        m.englishName.toLowerCase().includes(q) ||
+        m.membershipNumber?.toString().includes(q) ||
+        m.phone.includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        (m.city ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [members, searchTerm, specialtyFilter, typeFilter]);
+
+  const hasActiveFilters =
+    searchTerm.length > 0 || specialtyFilter !== ALL_VALUE || typeFilter !== ALL_VALUE;
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSpecialtyFilter(ALL_VALUE);
+    setTypeFilter(ALL_VALUE);
+  };
 
   const exportToExcel = () => {
-    const data = filteredMembers.map(m => ({
-      [t('field.membershipNumber')]: m.membershipNumber,
-      [t('field.fullName')]: m.fullName,
-      [t('field.fatherName')]: m.fatherName,
-      [t('field.englishName')]: m.englishName,
-      [t('field.birthDate')]: m.birthDate,
-      [t('field.gender')]: t(`val.${m.gender}`),
-      [t('field.specialty')]: t(`val.${m.specialty}`),
-      [t('field.email')]: m.email,
-      [t('field.phone')]: m.phone,
-      [t('field.workAddress')]: m.workAddress,
-      [t('field.joinDate')]: m.joinDate,
-      [t('field.membershipType')]: t(`val.${m.membershipType}`),
+    const data = filteredMembers.map((m) => ({
+      [t("field.membershipNumber")]: m.membershipNumber,
+      [t("field.fullName")]: m.fullName,
+      [t("field.fatherName")]: m.fatherName,
+      [t("field.englishName")]: m.englishName,
+      [t("field.birthDate")]: m.birthDate,
+      [t("field.gender")]: t(`val.${m.gender}`),
+      [t("field.specialty")]: t(`val.${m.specialty}`),
+      [t("field.email")]: m.email,
+      [t("field.phone")]: m.phone,
+      [t("field.workAddress")]: m.workAddress,
+      [t("field.city")]: m.city ?? "",
+      [t("field.joinDate")]: m.joinDate,
+      [t("field.membershipType")]: t(`val.${m.membershipType}`),
     }));
-
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Members");
@@ -53,93 +98,309 @@ export default function Members() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">{t('nav.members')}</h2>
-          <p className="text-muted-foreground">{t('app.title')}</p>
+      {/* ===== Page header ===== */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1
+            className="text-3xl font-bold tracking-tight text-foreground"
+            data-testid="text-page-title"
+          >
+            {t("nav.members")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isLoading
+              ? isAr ? "جارٍ تحميل القائمة..." : "Loading..."
+              : isAr
+              ? `${members.length} عضو في القاعدة${
+                  hasActiveFilters ? ` · ${filteredMembers.length} نتيجة مطابِقة` : ""
+                }`
+              : `${members.length} members${
+                  hasActiveFilters ? ` · ${filteredMembers.length} matches` : ""
+                }`}
+          </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={exportToExcel} className="flex-1 sm:flex-none">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={exportToExcel}
+            disabled={isLoading || filteredMembers.length === 0}
+            data-testid="button-export-excel"
+          >
             <FileSpreadsheet className="me-2 h-4 w-4" />
-            {t('action.export_excel')}
+            {t("action.export_excel")}
           </Button>
           <Link href="/add-member">
-            <Button className="flex-1 sm:flex-none">
+            <Button data-testid="button-add-member">
               <UserPlus className="me-2 h-4 w-4" />
-              {t('nav.add_member')}
+              {t("nav.add_member")}
             </Button>
           </Link>
         </div>
-      </div>
+      </header>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="relative">
-            <Search className={`absolute ${language === 'ar' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
-            <Input 
-              placeholder={t('action.search')} 
-              className={`pl-10 ${language === 'ar' ? 'pr-10 pl-3' : 'pl-10 pr-3'}`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-start">{t('field.membershipNumber')}</TableHead>
-                  <TableHead className="text-start">{t('field.fullName')}</TableHead>
-                  <TableHead className="text-start hidden md:table-cell">{t('field.specialty')}</TableHead>
-                  <TableHead className="text-start hidden sm:table-cell">{t('field.phone')}</TableHead>
-                  <TableHead className="text-start hidden lg:table-cell">{t('field.membershipType')}</TableHead>
-                  <TableHead className="text-end">{t('action.view_details')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMembers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      {t('app.no_results')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredMembers.map((member) => (
-                    <TableRow key={member.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-mono text-xs">#{member.membershipNumber}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span>{member.fullName}</span>
-                          <span className="text-xs text-muted-foreground md:hidden">{t(`val.${member.specialty}`)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="font-normal">
-                          {t(`val.${member.specialty}`)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">{member.phone}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <Badge variant={member.membershipType === 'original' ? 'default' : 'outline'}>
-                          {t(`val.${member.membershipType}`)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-end">
-                        <Link href={`/member/${member.id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      {/* ===== Filters ===== */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid gap-3 lg:grid-cols-[1fr_200px_200px_auto]">
+            {/* Search */}
+            <div className="relative">
+              <Search
+                className="absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-muted-foreground pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={
+                  isAr
+                    ? "ابحث بالاسم أو الرقم أو الهاتف أو البريد..."
+                    : "Search by name, number, phone, email..."
+                }
+                className="ps-10 pe-9"
+                data-testid="input-search"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute top-1/2 -translate-y-1/2 end-2 p-1 text-muted-foreground hover:text-foreground rounded-sm hover:bg-muted"
+                  aria-label={isAr ? "مسح البحث" : "Clear search"}
+                  data-testid="button-clear-search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+              <SelectTrigger data-testid="select-specialty-filter">
+                <SelectValue
+                  placeholder={isAr ? "كلّ الاختصاصات" : "All specialties"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>
+                  {isAr ? "كلّ الاختصاصات" : "All specialties"}
+                </SelectItem>
+                {SPECIALTIES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {isAr ? s.labelAr : s.labelEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger data-testid="select-type-filter">
+                <SelectValue placeholder={isAr ? "كلّ الأنواع" : "All types"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>
+                  {isAr ? "كلّ الأنواع" : "All types"}
+                </SelectItem>
+                {MEMBERSHIP_TYPES.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {isAr ? m.labelAr : m.labelEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                data-testid="button-clear-filters"
+                className="text-muted-foreground"
+              >
+                <X className="me-1.5 h-4 w-4" />
+                {isAr ? "مسح المرشّحات" : "Clear filters"}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* ===== Table ===== */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow>
+                <TableHead className="text-start w-32">
+                  {t("field.membershipNumber")}
+                </TableHead>
+                <TableHead className="text-start">{t("field.fullName")}</TableHead>
+                <TableHead className="text-start hidden md:table-cell">
+                  {t("field.specialty")}
+                </TableHead>
+                <TableHead className="text-start hidden sm:table-cell">
+                  {t("field.phone")}
+                </TableHead>
+                <TableHead className="text-start hidden lg:table-cell">
+                  {t("field.city")}
+                </TableHead>
+                <TableHead className="text-start hidden lg:table-cell">
+                  {t("field.membershipType")}
+                </TableHead>
+                <TableHead className="text-end w-16" aria-label="actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-40" />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                ))
+              ) : filteredMembers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-64">
+                    {members.length === 0 ? (
+                      <EmptyState
+                        icon={Users}
+                        title={isAr ? "لا يوجد أعضاء بعد" : "No members yet"}
+                        description={
+                          isAr
+                            ? "ابدأ بإضافة العضو الأوّل لقاعدة البيانات."
+                            : "Get started by adding your first member."
+                        }
+                        action={
+                          <Link href="/add-member">
+                            <Button data-testid="button-add-first-member">
+                              <UserPlus className="me-2 h-4 w-4" />
+                              {t("nav.add_member")}
+                            </Button>
+                          </Link>
+                        }
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={SearchX}
+                        title={t("app.no_results")}
+                        description={
+                          isAr
+                            ? "جرّب تغيير كلمات البحث أو إعادة ضبط المرشّحات."
+                            : "Try adjusting your search or clearing filters."
+                        }
+                        action={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearFilters}
+                            data-testid="button-clear-filters-empty"
+                          >
+                            {isAr ? "إعادة ضبط" : "Clear filters"}
+                          </Button>
+                        }
+                      />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredMembers.map((member) => (
+                  <TableRow
+                    key={member.id}
+                    className={cn(
+                      "group cursor-pointer hover:bg-muted/40 transition-colors",
+                    )}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest("a, button")) return;
+                      window.location.href = `/member/${member.id}`;
+                    }}
+                    data-testid={`row-member-${member.id}`}
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
+                      #{member.membershipNumber}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span className="text-foreground">{member.fullName}</span>
+                        <span className="text-xs text-muted-foreground md:hidden">
+                          {t(`val.${member.specialty}`)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="secondary" className="font-normal">
+                        {t(`val.${member.specialty}`)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell tabular-nums" dir="ltr">
+                      <span className="block text-start">{member.phone}</span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      {member.city || "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Badge
+                        variant={member.membershipType === "original" ? "default" : "outline"}
+                      >
+                        {t(`val.${member.membershipType}`)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <Link href={`/member/${member.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("action.view_details")}
+                          data-testid={`button-view-${member.id}`}
+                          className="text-muted-foreground group-hover:text-foreground"
+                        >
+                          <ArrowGo className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-8 px-4">
+      <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mb-4">
+        <Icon className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+      </div>
+      <p className="text-base font-semibold text-foreground">{title}</p>
+      <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

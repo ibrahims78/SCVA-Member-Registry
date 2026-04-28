@@ -18,6 +18,15 @@ const translations: Record<string, Record<Language, string>> = {
   'nav.add_member': { ar: 'إضافة عضو', en: 'Add Member' },
   'nav.reports': { ar: 'التقارير', en: 'Reports' },
   'nav.settings': { ar: 'الإعدادات', en: 'Settings' },
+  'nav.open_menu': { ar: 'فتح القائمة', en: 'Open menu' },
+  'nav.collapse_sidebar': { ar: 'طيّ القائمة', en: 'Collapse sidebar' },
+  'nav.expand_sidebar': { ar: 'توسيع القائمة', en: 'Expand sidebar' },
+  'nav.theme_toggle': { ar: 'تبديل الوضع', en: 'Toggle theme' },
+  'nav.language_toggle': { ar: 'تبديل اللغة', en: 'Toggle language' },
+  'nav.user_menu': { ar: 'قائمة المستخدم', en: 'User menu' },
+  'nav.logout': { ar: 'تسجيل الخروج', en: 'Sign out' },
+  'role.admin': { ar: 'مدير', en: 'Admin' },
+  'role.employee': { ar: 'موظّف', en: 'Employee' },
   
   // Fields
   'field.firstName': { ar: 'الاسم', en: 'First Name' },
