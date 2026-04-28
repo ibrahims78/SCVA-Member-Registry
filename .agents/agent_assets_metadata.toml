@@ -6,3 +6,9 @@ id = "ZIQkqlzVJRceQY5klZ0DB"
 uri = "file://docs/UI_UX_IMPROVEMENT_PLAN.md"
 type = "text"
 title = "خطة تحسين الهوية البصرية وتجربة المستخدم — SCVA"
+
+[[outputs]]
+id = "N1ZVPoIJYn86C_3rRZzLO"
+uri = "file://اعضاء-تجريبيون-SCVA.xlsx"
+type = "table"
+title = "100 عضو تجريبي — الرابطة السورية لأمراض القلب"
