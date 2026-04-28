@@ -45,29 +45,19 @@ export class DatabaseStorage implements IStorage {
       const adminExists = await this.getUserByUsername("admin");
       if (adminExists) return;
 
-      const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
-      if (!initialPassword) {
-        console.warn(
-          "[STORAGE] لا يوجد مستخدم admin ولم يتم ضبط ADMIN_INITIAL_PASSWORD. " +
-            "لتفعيل الحساب الافتراضي، عيّن المتغير ADMIN_INITIAL_PASSWORD ثم أعد التشغيل.",
-        );
-        return;
-      }
+      const defaultPassword =
+        process.env.ADMIN_INITIAL_PASSWORD || "12345678";
 
-      if (initialPassword.length < 8) {
-        console.error(
-          "[STORAGE] ADMIN_INITIAL_PASSWORD يجب أن يحتوي 8 أحرف على الأقل. تم تخطّي إنشاء admin.",
-        );
-        return;
-      }
-
-      const hashedPassword = await bcrypt.hash(initialPassword, 10);
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       await db.insert(users).values({
         username: "admin",
         password: hashedPassword,
         role: "admin",
+        mustChangePassword: true,
       });
-      console.log("[STORAGE] تم إنشاء مستخدم admin من ADMIN_INITIAL_PASSWORD.");
+      console.log(
+        "[STORAGE] تم إنشاء مستخدم admin الافتراضي. سيُطلب تغيير كلمة المرور عند أول تسجيل دخول.",
+      );
     } catch (error) {
       console.error("[STORAGE] فشل في إنشاء مستخدم admin:", error);
     }

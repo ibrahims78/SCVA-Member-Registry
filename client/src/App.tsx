@@ -16,6 +16,7 @@ import AddMember from "./pages/AddMember";
 import MemberDetails from "./pages/MemberDetails";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
 
 function Router() {
   const { data: user, isLoading } = useQuery<User | null>({
@@ -39,6 +40,10 @@ function Router() {
 
   if (!user) {
     return <Login />;
+  }
+
+  if ((user as any).mustChangePassword) {
+    return <ChangePassword />;
   }
 
   return (

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 export const users = pgTable("users", {
@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("employee"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
 });
 
 export const members = pgTable("members", {
@@ -52,8 +53,17 @@ export const updateUserSchema = z
     username: z.string().min(3).optional(),
     password: z.string().min(6).optional(),
     role: z.enum(["admin", "employee"]).optional(),
+    mustChangePassword: z.boolean().optional(),
   })
   .strict();
+
+export const changePasswordSchema = z.object({
+  newPassword: z.string().min(8, "كلمة المرور الجديدة يجب أن تحتوي على 8 أحرف على الأقل"),
+  confirmPassword: z.string().min(1, "تأكيد كلمة المرور مطلوب"),
+}).refine((d) => d.newPassword === d.confirmPassword, {
+  message: "كلمتا المرور غير متطابقتين",
+  path: ["confirmPassword"],
+});
 
 export const insertMemberSchema = z.object({
   firstName: z.string().min(1, "الاسم الأول مطلوب"),

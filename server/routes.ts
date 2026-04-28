@@ -4,6 +4,7 @@ import { z } from "zod";
 import puppeteer from "puppeteer-core";
 import { storage } from "./storage";
 import {
+  changePasswordSchema,
   insertMemberSchema,
   insertSubscriptionSchema,
   insertUserSchema,
@@ -186,6 +187,25 @@ export async function registerRoutes(
       }
     },
   );
+
+  // ---------- Change Password (forced on first login) ----------
+  app.post("/api/user/change-password", requireAuth, async (req, res, next) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) return handleZodError(res, parsed.error);
+    try {
+      const bcrypt = await import("bcryptjs");
+      const hashedPassword = await bcrypt.default.hash(parsed.data.newPassword, 10);
+      const updated = await storage.updateUser(req.user!.id, {
+        password: hashedPassword,
+        mustChangePassword: false,
+      });
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      const { password, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // ---------- Members Bulk Import ----------
   app.post("/api/members/import", requireAuth, async (req, res, next) => {
