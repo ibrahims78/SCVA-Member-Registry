@@ -63,6 +63,7 @@ const SUB_IMPORT_COLUMNS = [
 interface ImportResult {
   success: number;
   failed: number;
+  skipped?: number;
   errors: string[];
 }
 
@@ -597,6 +598,12 @@ export default function Settings() {
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     <span>فشل: <strong>{subImportResult.failed}</strong></span>
+                  </div>
+                )}
+                {subImportResult.skipped !== undefined && subImportResult.skipped > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>تمّ تجاهل (موجود مسبقاً): <strong>{subImportResult.skipped}</strong></span>
                   </div>
                 )}
               </div>

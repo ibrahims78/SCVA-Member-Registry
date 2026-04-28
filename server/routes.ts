@@ -225,7 +225,19 @@ export async function registerRoutes(
         byName.set(nameKey, m);
       }
 
-      const results = { success: 0, failed: 0, errors: [] as string[] };
+      // Cache existing (memberId, year) pairs to avoid duplicate inserts
+      const existingPairs = new Set<string>();
+      for (const m of allMembers) {
+        const subs = await storage.getSubscriptionsByMemberId(m.id);
+        for (const s of subs) existingPairs.add(`${m.id}:${s.year}`);
+      }
+
+      const results = {
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
 
       for (const row of rows) {
         const rowLabel = `(${row.firstName || ""} ${row.lastName || ""} - ${row.year || ""})`;
@@ -258,8 +270,15 @@ export async function registerRoutes(
           continue;
         }
 
+        const pairKey = `${member.id}:${parsed.data.year}`;
+        if (existingPairs.has(pairKey)) {
+          results.skipped++;
+          continue;
+        }
+
         try {
           await storage.createSubscription({ ...parsed.data, memberId: member.id });
+          existingPairs.add(pairKey);
           results.success++;
         } catch {
           results.failed++;
