@@ -1,0 +1,78 @@
+# ---------- Dependencies ----------
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ---------- Build output ----------
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+
+# ---------- Environment & secrets ----------
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+*.pem
+*.key
+*.crt
+*.cert
+
+# Replit / runtime caches
+.replit_cache/
+.upm/
+.config/
+
+# ---------- Logs ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------- IDE / editor ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---------- Testing & coverage ----------
+coverage/
+.nyc_output/
+*.lcov
+
+# ---------- Local databases / data dumps ----------
+*.sqlite
+*.sqlite3
+*.db
+postgres_data/
+pgdata/
+
+# ---------- Misc ----------
+.tmp/
+tmp/
+.temp/
+.eslintcache
+.stylelintcache
+
+# ---------- Replit Agent local state ----------
+.local/
+.agents/
+attached_assets/
+
+# ---------- OS-specific ----------
+.AppleDouble
+.LSOverride
+ehthumbs.db
