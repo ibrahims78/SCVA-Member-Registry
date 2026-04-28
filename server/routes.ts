@@ -188,6 +188,34 @@ export async function registerRoutes(
     },
   );
 
+  app.patch("/api/subscriptions/:id", requireAuth, async (req, res, next) => {
+    const parsed = insertSubscriptionSchema.partial().safeParse(req.body);
+    if (!parsed.success) return handleZodError(res, parsed.error);
+    try {
+      const existing = await storage.getSubscription(paramId(req));
+      if (!existing) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+      const updated = await storage.updateSubscription(paramId(req), parsed.data);
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.delete("/api/subscriptions/:id", requireAuth, async (req, res, next) => {
+    try {
+      const existing = await storage.getSubscription(paramId(req));
+      if (!existing) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+      await storage.deleteSubscription(paramId(req));
+      res.sendStatus(204);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ---------- Change Password (forced on first login) ----------
   app.post("/api/user/change-password", requireAuth, async (req, res, next) => {
     const parsed = changePasswordSchema.safeParse(req.body);

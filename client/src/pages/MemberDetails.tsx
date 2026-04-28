@@ -114,7 +114,13 @@ function InfoItem({
 export default function MemberDetails() {
   const [, params] = useRoute("/member/:id");
   const { t, language, direction } = useLanguage();
-  const { getMember, deleteMember, addSubscription } = useMembers();
+  const {
+    getMember,
+    deleteMember,
+    addSubscription,
+    updateSubscription,
+    deleteSubscription,
+  } = useMembers();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -125,6 +131,16 @@ export default function MemberDetails() {
     amount: "",
     notes: "",
   });
+
+  // Edit subscription state
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editPayment, setEditPayment] = useState({
+    year: new Date().getFullYear(),
+    amount: "",
+    notes: "",
+    date: "",
+  });
+  const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
 
   const isAr = language === "ar";
   const BackArrow = direction === "rtl" ? ArrowRight : ArrowLeft;
@@ -166,6 +182,56 @@ export default function MemberDetails() {
     setIsPaymentOpen(false);
     setNewPayment({ year: currentYear, amount: "", notes: "" });
     toast({ title: isAr ? "تمّ تسجيل الاشتراك" : "Payment recorded" });
+  };
+
+  const openEditPayment = (sub: {
+    id: string;
+    year: number;
+    amount: number;
+    notes: string | null;
+    date: string;
+  }) => {
+    setEditingSubId(sub.id);
+    setEditPayment({
+      year: sub.year,
+      amount: String(sub.amount),
+      notes: sub.notes ?? "",
+      date: sub.date ? sub.date.slice(0, 10) : "",
+    });
+  };
+
+  const handleSaveEditPayment = () => {
+    if (!editingSubId) return;
+    const amount = Number(editPayment.amount);
+    if (!amount || amount < 0) {
+      toast({
+        title: isAr ? "خطأ" : "Error",
+        description: isAr ? "أدخل مبلغاً صحيحاً" : "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!editPayment.date) {
+      toast({
+        title: isAr ? "خطأ" : "Error",
+        description: isAr ? "التاريخ مطلوب" : "Date is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateSubscription(editingSubId, {
+      year: Number(editPayment.year),
+      amount,
+      notes: editPayment.notes,
+      date: editPayment.date,
+    });
+    setEditingSubId(null);
+  };
+
+  const handleConfirmDeleteSub = () => {
+    if (!deletingSubId) return;
+    deleteSubscription(deletingSubId);
+    setDeletingSubId(null);
   };
 
   const generateWord = async () => {
@@ -604,12 +670,16 @@ export default function MemberDetails() {
                   <TableHead className="text-start font-semibold">
                     {isAr ? "التاريخ" : "Date"}
                   </TableHead>
+                  <TableHead
+                    className="w-24 text-end font-semibold print:hidden"
+                    aria-label={isAr ? "إجراءات" : "Actions"}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {member.subscriptions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-32">
+                    <TableCell colSpan={5} className="h-32">
                       <div className="flex flex-col items-center justify-center text-center gap-2">
                         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                           <Wallet className="h-5 w-5 text-muted-foreground" />
@@ -662,6 +732,30 @@ export default function MemberDetails() {
                               )
                             : "—"}
                         </TableCell>
+                        <TableCell className="text-end print:hidden">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditPayment(sub)}
+                              aria-label={isAr ? "تعديل الاشتراك" : "Edit subscription"}
+                              data-testid={`button-edit-subscription-${sub.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeletingSubId(sub.id)}
+                              aria-label={isAr ? "حذف الاشتراك" : "Delete subscription"}
+                              data-testid={`button-delete-subscription-${sub.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                 )}
@@ -670,6 +764,137 @@ export default function MemberDetails() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ===== Edit subscription dialog ===== */}
+      <Dialog
+        open={editingSubId !== null}
+        onOpenChange={(open) => !open && setEditingSubId(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isAr ? "تعديل الاشتراك" : "Edit subscription"}
+            </DialogTitle>
+            <DialogDescription>
+              {isAr
+                ? "حدّث معلومات قيد الاشتراك ثم احفظ التغييرات."
+                : "Update the subscription record and save your changes."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-payment-year">{t("sub.year")}</Label>
+                <Input
+                  id="edit-payment-year"
+                  type="number"
+                  value={editPayment.year}
+                  onChange={(e) =>
+                    setEditPayment({
+                      ...editPayment,
+                      year: parseInt(e.target.value) || currentYear,
+                    })
+                  }
+                  data-testid="input-edit-payment-year"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-payment-amount">
+                  {t("sub.value")} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="edit-payment-amount"
+                  type="number"
+                  value={editPayment.amount}
+                  onChange={(e) =>
+                    setEditPayment({ ...editPayment, amount: e.target.value })
+                  }
+                  placeholder="0"
+                  data-testid="input-edit-payment-amount"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-payment-date">
+                {isAr ? "التاريخ" : "Date"}{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="edit-payment-date"
+                type="date"
+                value={editPayment.date}
+                onChange={(e) =>
+                  setEditPayment({ ...editPayment, date: e.target.value })
+                }
+                data-testid="input-edit-payment-date"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-payment-notes">
+                {t("sub.notes")}{" "}
+                <span className="text-xs text-muted-foreground font-normal">
+                  ({isAr ? "اختياري" : "optional"})
+                </span>
+              </Label>
+              <Textarea
+                id="edit-payment-notes"
+                value={editPayment.notes}
+                onChange={(e) =>
+                  setEditPayment({ ...editPayment, notes: e.target.value })
+                }
+                rows={2}
+                data-testid="input-edit-payment-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingSubId(null)}
+              data-testid="button-cancel-edit-payment"
+            >
+              {t("action.cancel")}
+            </Button>
+            <Button
+              onClick={handleSaveEditPayment}
+              data-testid="button-save-edit-payment"
+            >
+              {t("action.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Delete subscription confirmation ===== */}
+      <AlertDialog
+        open={deletingSubId !== null}
+        onOpenChange={(open) => !open && setDeletingSubId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isAr ? "حذف الاشتراك" : "Delete subscription"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? "هل أنت متأكد من حذف هذا القيد؟ لا يمكن التراجع عن هذا الإجراء."
+                : "Are you sure you want to delete this record? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-subscription">
+              {t("action.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteSub}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-subscription"
+            >
+              {isAr ? "حذف" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

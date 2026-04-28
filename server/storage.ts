@@ -37,6 +37,8 @@ export interface IStorage {
     id: string,
     updates: Partial<InsertSubscription>,
   ): Promise<Subscription | undefined>;
+  getSubscription(id: string): Promise<Subscription | undefined>;
+  deleteSubscription(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -176,6 +178,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptions.id, id))
       .returning();
     return updated;
+  }
+
+  async getSubscription(id: string): Promise<Subscription | undefined> {
+    const [sub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, id));
+    return sub;
+  }
+
+  async deleteSubscription(id: string): Promise<void> {
+    await db.delete(subscriptions).where(eq(subscriptions.id, id));
   }
 }
 

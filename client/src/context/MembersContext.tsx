@@ -15,6 +15,11 @@ interface MembersContextType {
   updateMember: (id: string, updates: UpdateMember) => void;
   deleteMember: (id: string) => void;
   addSubscription: (memberId: string, subscription: InsertSubscription) => void;
+  updateSubscription: (
+    subscriptionId: string,
+    updates: Partial<InsertSubscription>,
+  ) => void;
+  deleteSubscription: (subscriptionId: string) => void;
   getMember: (id: string) => MemberWithSubscriptions | undefined;
   isLoading: boolean;
 }
@@ -121,6 +126,51 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: async ({
+      subscriptionId,
+      updates,
+    }: {
+      subscriptionId: string;
+      updates: Partial<InsertSubscription>;
+    }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/subscriptions/${subscriptionId}`,
+        updates,
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "تم تحديث الاشتراك بنجاح" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "خطأ في تحديث الاشتراك",
+        description: error?.message ?? "",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSubscriptionMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      await apiRequest("DELETE", `/api/subscriptions/${subscriptionId}`);
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "تم حذف الاشتراك" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "خطأ في حذف الاشتراك",
+        description: error?.message ?? "",
+        variant: "destructive",
+      });
+    },
+  });
+
   const value: MembersContextType = {
     members,
     addMember: (data) => addMemberMutation.mutate(data),
@@ -129,6 +179,10 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     deleteMember: (id) => deleteMemberMutation.mutate(id),
     addSubscription: (memberId, sub) =>
       addSubscriptionMutation.mutate({ memberId, sub }),
+    updateSubscription: (subscriptionId, updates) =>
+      updateSubscriptionMutation.mutate({ subscriptionId, updates }),
+    deleteSubscription: (subscriptionId) =>
+      deleteSubscriptionMutation.mutate(subscriptionId),
     getMember: (id) => members.find((m) => m.id === id),
     isLoading,
   };
