@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # خدمة التطبيق (app)
+  app:
+    build: .
+    command: npm run dev
+    ports:
+      - "5000:5000"
+    # التعديل: زيادة الذاكرة المشتركة ضروري جداً لعمليات الـ PDF
+    shm_size: '2gb'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    # التعديل: توجيه النطاق إلى 127.0.0.1 داخل الحاوية نفسها
+    extra_hosts:
+      - "scva.sidawin8n.cfd:127.0.0.1"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/scva_db
+      - SESSION_SECRET=your_secure_session_secret
+      - CHROME_PATH=/usr/bin/chromium
+      # تجاهل أخطاء الشهادات عند الاتصال الداخلي
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - scva_network
+
+  # قاعدة البيانات (db)
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=scva_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d scva_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scva_network
+
+  # خدمة نفق كلاود فلير (cloudflare_tunnel)
+  cloudflare_tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared_connector
+    restart: unless-stopped
+    # تم استخدام التوكن الخاص بك المستخرج من ملفاتك
+    command: tunnel --no-autoupdate run --token eyJhIjoiZmJkMGU1ZWRhZGQ2MDUxNDI1NGQzZGIzNjNlNDRlNjQiLCJ0IjoiNzAzNjhjZWUtNGM2OC00YjVmLWE5ODktMGFiNjcyMzVlODVmIiwicyI6Ik1ETXhOR0pqTmpVdE0yRm1PQzAwWVdJMUxXSmpNRFV0WldRME1EZG1OVE5tTVRjeSJ9
+    networks:
+      - scva_network
+
+networks:
+  scva_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
