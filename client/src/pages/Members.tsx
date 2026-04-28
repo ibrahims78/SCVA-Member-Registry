@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useMembers } from "@/context/MembersContext";
@@ -31,6 +31,10 @@ import {
   SearchX,
   ArrowLeft,
   ArrowRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
@@ -44,9 +48,16 @@ export default function Members() {
   const [searchTerm, setSearchTerm] = useState("");
   const [specialtyFilter, setSpecialtyFilter] = useState<string>(ALL_VALUE);
   const [typeFilter, setTypeFilter] = useState<string>(ALL_VALUE);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const isAr = language === "ar";
   const ArrowGo = direction === "rtl" ? ArrowLeft : ArrowRight;
+  const isRtl = direction === "rtl";
+  const PrevIcon = isRtl ? ChevronRight : ChevronLeft;
+  const NextIcon = isRtl ? ChevronLeft : ChevronRight;
+  const FirstIcon = isRtl ? ChevronsRight : ChevronsLeft;
+  const LastIcon = isRtl ? ChevronsLeft : ChevronsRight;
 
   const filteredMembers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -73,6 +84,52 @@ export default function Members() {
     setSpecialtyFilter(ALL_VALUE);
     setTypeFilter(ALL_VALUE);
   };
+
+  // ---- Pagination ----
+  const totalCount = filteredMembers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  // Reset to first page when filters or page size change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, specialtyFilter, typeFilter, pageSize]);
+
+  // Clamp current page if data shrinks
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const pagedMembers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredMembers.slice(start, start + pageSize);
+  }, [filteredMembers, currentPage, pageSize]);
+
+  const rangeStart = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(totalCount, currentPage * pageSize);
+
+  // Build a compact list of page numbers (with ellipses) to render
+  const pageNumbers = useMemo<(number | "…")[]>(() => {
+    const pages: (number | "…")[] = [];
+    const window = 1;
+    const push = (p: number | "…") => {
+      if (pages[pages.length - 1] !== p) pages.push(p);
+    };
+    for (let p = 1; p <= totalPages; p++) {
+      if (
+        p === 1 ||
+        p === totalPages ||
+        (p >= currentPage - window && p <= currentPage + window)
+      ) {
+        push(p);
+      } else if (
+        (p === currentPage - window - 1 && p > 1) ||
+        (p === currentPage + window + 1 && p < totalPages)
+      ) {
+        push("…");
+      }
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   const exportToExcel = () => {
     const data = filteredMembers.map((m) => ({
@@ -316,7 +373,7 @@ export default function Members() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredMembers.map((member) => (
+                pagedMembers.map((member) => (
                   <TableRow
                     key={member.id}
                     className={cn(
@@ -377,6 +434,130 @@ export default function Members() {
             </TableBody>
           </Table>
         </div>
+
+        {/* ===== Pagination footer ===== */}
+        {!isLoading && totalCount > 0 && (
+          <div
+            className="flex flex-col gap-3 border-t bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="pagination-footer"
+          >
+            {/* Page size selector + range info */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span>{isAr ? "السجلات في الصفحة:" : "Rows per page:"}</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => setPageSize(Number(v))}
+                >
+                  <SelectTrigger
+                    className="h-8 w-[80px]"
+                    data-testid="select-page-size"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <span
+                className="tabular-nums"
+                data-testid="text-pagination-range"
+              >
+                {isAr
+                  ? `${rangeStart}–${rangeEnd} من ${totalCount}`
+                  : `${rangeStart}–${rangeEnd} of ${totalCount}`}
+              </span>
+            </div>
+
+            {/* Page nav buttons */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                aria-label={isAr ? "الصفحة الأولى" : "First page"}
+                data-testid="button-page-first"
+              >
+                <FirstIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                aria-label={isAr ? "السابق" : "Previous"}
+                data-testid="button-page-prev"
+              >
+                <PrevIcon className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-1 px-1">
+                {pageNumbers.map((p, i) =>
+                  p === "…" ? (
+                    <span
+                      key={`e-${i}`}
+                      className="px-1 text-xs text-muted-foreground"
+                      aria-hidden="true"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={p === currentPage ? "default" : "ghost"}
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 text-sm tabular-nums",
+                        p === currentPage && "pointer-events-none",
+                      )}
+                      onClick={() => setCurrentPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                      aria-label={
+                        isAr ? `الصفحة ${p}` : `Page ${p}`
+                      }
+                      data-testid={`button-page-${p}`}
+                    >
+                      {p}
+                    </Button>
+                  ),
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                aria-label={isAr ? "التالي" : "Next"}
+                data-testid="button-page-next"
+              >
+                <NextIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                aria-label={isAr ? "الصفحة الأخيرة" : "Last page"}
+                data-testid="button-page-last"
+              >
+                <LastIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
