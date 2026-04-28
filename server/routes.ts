@@ -210,7 +210,9 @@ export async function registerRoutes(
   // ---------- Subscriptions Bulk Import ----------
   app.post("/api/subscriptions/import", requireAuth, async (req, res, next) => {
     try {
-      const rows = req.body;
+      const body = req.body;
+      const rows = Array.isArray(body) ? body : body?.rows;
+      const updateExisting = !Array.isArray(body) && body?.updateExisting === true;
       if (!Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
       }
@@ -225,15 +227,16 @@ export async function registerRoutes(
         byName.set(nameKey, m);
       }
 
-      // Cache existing (memberId, year) pairs to avoid duplicate inserts
-      const existingPairs = new Set<string>();
+      // Cache existing (memberId, year) -> subscription id, to skip or update
+      const existingByPair = new Map<string, string>();
       for (const m of allMembers) {
         const subs = await storage.getSubscriptionsByMemberId(m.id);
-        for (const s of subs) existingPairs.add(`${m.id}:${s.year}`);
+        for (const s of subs) existingByPair.set(`${m.id}:${s.year}`, s.id);
       }
 
       const results = {
         success: 0,
+        updated: 0,
         failed: 0,
         skipped: 0,
         errors: [] as string[],
@@ -271,14 +274,29 @@ export async function registerRoutes(
         }
 
         const pairKey = `${member.id}:${parsed.data.year}`;
-        if (existingPairs.has(pairKey)) {
-          results.skipped++;
+        const existingId = existingByPair.get(pairKey);
+
+        if (existingId) {
+          if (!updateExisting) {
+            results.skipped++;
+            continue;
+          }
+          try {
+            await storage.updateSubscription(existingId, parsed.data);
+            results.updated++;
+          } catch {
+            results.failed++;
+            results.errors.push(`${rowLabel}: فشل تحديث الاشتراك`);
+          }
           continue;
         }
 
         try {
-          await storage.createSubscription({ ...parsed.data, memberId: member.id });
-          existingPairs.add(pairKey);
+          const created = await storage.createSubscription({
+            ...parsed.data,
+            memberId: member.id,
+          });
+          existingByPair.set(pairKey, created.id);
           results.success++;
         } catch {
           results.failed++;
@@ -295,22 +313,24 @@ export async function registerRoutes(
   // ---------- Members Bulk Import ----------
   app.post("/api/members/import", requireAuth, async (req, res, next) => {
     try {
-      const rows = req.body;
+      const body = req.body;
+      const rows = Array.isArray(body) ? body : body?.rows;
+      const updateExisting = !Array.isArray(body) && body?.updateExisting === true;
       if (!Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
       }
 
-      // Build a name lookup of existing members to skip duplicates
+      // Build a name -> existing member lookup
       const existing = await storage.getMembers();
-      const existingNames = new Set<string>(
-        existing.map(
-          (m) =>
-            `${(m.firstName || "").trim()}_${(m.lastName || "").trim()}`.toLowerCase(),
-        ),
-      );
+      const existingByName = new Map<string, typeof existing[0]>();
+      for (const m of existing) {
+        const key = `${(m.firstName || "").trim()}_${(m.lastName || "").trim()}`.toLowerCase();
+        existingByName.set(key, m);
+      }
 
       const results = {
         success: 0,
+        updated: 0,
         failed: 0,
         skipped: 0,
         errors: [] as string[],
@@ -326,14 +346,26 @@ export async function registerRoutes(
         }
 
         const nameKey = `${(parsed.data.firstName || "").trim()}_${(parsed.data.lastName || "").trim()}`.toLowerCase();
-        if (existingNames.has(nameKey)) {
-          results.skipped++;
+        const existingMember = existingByName.get(nameKey);
+
+        if (existingMember) {
+          if (!updateExisting) {
+            results.skipped++;
+            continue;
+          }
+          try {
+            await storage.updateMember(existingMember.id, parsed.data);
+            results.updated++;
+          } catch {
+            results.failed++;
+            results.errors.push(`فشل تحديث: ${row.firstName || ""} ${row.lastName || ""}`);
+          }
           continue;
         }
 
         try {
-          await storage.createMember(parsed.data);
-          existingNames.add(nameKey);
+          const created = await storage.createMember(parsed.data);
+          existingByName.set(nameKey, created);
           results.success++;
         } catch {
           results.failed++;

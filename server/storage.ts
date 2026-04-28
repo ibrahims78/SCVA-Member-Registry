@@ -33,6 +33,10 @@ export interface IStorage {
   createSubscription(
     subscription: InsertSubscription & { memberId: string },
   ): Promise<Subscription>;
+  updateSubscription(
+    id: string,
+    updates: Partial<InsertSubscription>,
+  ): Promise<Subscription | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -153,6 +157,25 @@ export class DatabaseStorage implements IStorage {
       .values(subscription)
       .returning();
     return newSub;
+  }
+
+  async updateSubscription(
+    id: string,
+    updates: Partial<InsertSubscription>,
+  ): Promise<Subscription | undefined> {
+    if (Object.keys(updates).length === 0) {
+      const [existing] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.id, id));
+      return existing;
+    }
+    const [updated] = await db
+      .update(subscriptions)
+      .set(updates as Partial<typeof subscriptions.$inferInsert>)
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updated;
   }
 }
 

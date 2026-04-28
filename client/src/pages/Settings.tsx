@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
@@ -64,6 +65,7 @@ interface ImportResult {
   success: number;
   failed: number;
   skipped?: number;
+  updated?: number;
   errors: string[];
 }
 
@@ -74,6 +76,8 @@ export default function Settings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [memberUpdateExisting, setMemberUpdateExisting] = useState(false);
+  const [subUpdateExisting, setSubUpdateExisting] = useState(false);
   const [subImportResult, setSubImportResult] = useState<ImportResult | null>(null);
   const [isSubImporting, setIsSubImporting] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -219,15 +223,19 @@ export default function Settings() {
       const res = await fetch("/api/members/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(members),
+        body: JSON.stringify({ rows: members, updateExisting: memberUpdateExisting }),
       });
       const result: ImportResult = await res.json();
       setImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
-      if (result.success > 0) {
+      if (result.success > 0 || (result.updated ?? 0) > 0) {
+        const parts: string[] = [];
+        if (result.success > 0) parts.push(`أُضيف ${result.success}`);
+        if ((result.updated ?? 0) > 0) parts.push(`حُدِّث ${result.updated}`);
+        if (result.failed > 0) parts.push(`فشل ${result.failed}`);
         toast({
           title: "اكتمل الاستيراد",
-          description: `تمّ استيراد ${result.success} عضو بنجاح${result.failed > 0 ? `، فشل ${result.failed}` : ""}.`,
+          description: parts.join("، "),
         });
       }
     } catch {
@@ -306,15 +314,19 @@ export default function Settings() {
       const res = await fetch("/api/subscriptions/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(rows),
+        body: JSON.stringify({ rows, updateExisting: subUpdateExisting }),
       });
       const result: ImportResult = await res.json();
       setSubImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
-      if (result.success > 0) {
+      if (result.success > 0 || (result.updated ?? 0) > 0) {
+        const parts: string[] = [];
+        if (result.success > 0) parts.push(`أُضيف ${result.success}`);
+        if ((result.updated ?? 0) > 0) parts.push(`حُدِّث ${result.updated}`);
+        if (result.failed > 0) parts.push(`فشل ${result.failed}`);
         toast({
           title: "اكتمل استيراد الاشتراكات",
-          description: `تمّ استيراد ${result.success} اشتراك بنجاح${result.failed > 0 ? `، فشل ${result.failed}` : ""}.`,
+          description: parts.join("، "),
         });
       }
     } catch {
@@ -480,6 +492,22 @@ export default function Settings() {
             </div>
           </div>
 
+          <label className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 cursor-pointer">
+            <Checkbox
+              id="member-update-existing"
+              checked={memberUpdateExisting}
+              onCheckedChange={(c) => setMemberUpdateExisting(c === true)}
+              data-testid="checkbox-member-update-existing"
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5 text-sm">
+              <span className="font-medium">تحديث بيانات الأعضاء الموجودين</span>
+              <p className="text-xs text-muted-foreground">
+                عند تفعيله، يُحدِّث بيانات أي عضو يتطابق اسمه (الأول + الكنية) بدلاً من تجاهله.
+              </p>
+            </div>
+          </label>
+
           {importResult && (
             <div className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -497,6 +525,12 @@ export default function Settings() {
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     <span>فشل: <strong>{importResult.failed}</strong></span>
+                  </div>
+                )}
+                {importResult.updated !== undefined && importResult.updated > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>تمّ التحديث: <strong>{importResult.updated}</strong></span>
                   </div>
                 )}
                 {importResult.skipped !== undefined && importResult.skipped > 0 && (
@@ -587,6 +621,22 @@ export default function Settings() {
             </div>
           </div>
 
+          <label className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 cursor-pointer">
+            <Checkbox
+              id="sub-update-existing"
+              checked={subUpdateExisting}
+              onCheckedChange={(c) => setSubUpdateExisting(c === true)}
+              data-testid="checkbox-sub-update-existing"
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5 text-sm">
+              <span className="font-medium">تحديث الاشتراكات الموجودة</span>
+              <p className="text-xs text-muted-foreground">
+                عند تفعيله، يُحدِّث المبلغ والتاريخ والملاحظات لأي اشتراك موجود لنفس العضو ونفس السنة بدلاً من تجاهله.
+              </p>
+            </div>
+          </label>
+
           {subImportResult && (
             <div className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -604,6 +654,12 @@ export default function Settings() {
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     <span>فشل: <strong>{subImportResult.failed}</strong></span>
+                  </div>
+                )}
+                {subImportResult.updated !== undefined && subImportResult.updated > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>تمّ التحديث: <strong>{subImportResult.updated}</strong></span>
                   </div>
                 )}
                 {subImportResult.skipped !== undefined && subImportResult.skipped > 0 && (
