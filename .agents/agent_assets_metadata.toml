@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ZIQkqlzVJRceQY5klZ0DB"
+uri = "file://docs/UI_UX_IMPROVEMENT_PLAN.md"
+type = "text"
+title = "خطة تحسين الهوية البصرية وتجربة المستخدم — SCVA"
