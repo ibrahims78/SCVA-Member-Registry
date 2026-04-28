@@ -39,20 +39,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const memberSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  fullName: z.string().min(2, "Name is required"),
-  fatherName: z.string().min(2, "Father name is required"),
-  englishName: z.string().min(2, "English name is required"),
-  birthDate: z.string().min(1, "Date is required"),
-  gender: z.enum(["male", "female"]),
-  specialty: z.string().min(1, "Required"),
-  email: z.string().email("Invalid email"),
-  phone: z.string().min(5, "Required"),
-  workAddress: z.string().min(2, "Required"),
-  city: z.string().min(1, "Required"),
-  joinDate: z.string().min(1, "Required"),
-  membershipType: z.enum(["original", "associate"]),
+  firstName: z.string().min(1, "الاسم الأول مطلوب"),
+  lastName: z.string().min(1, "الكنية مطلوبة"),
+  fullName: z.string().optional(),
+  fatherName: z.string().optional(),
+  englishName: z.string().optional(),
+  birthDate: z.string().optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  specialty: z.string().optional(),
+  email: z.string().email("بريد إلكتروني غير صالح").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  workAddress: z.string().optional(),
+  city: z.string().optional(),
+  joinDate: z.string().optional(),
+  membershipType: z.enum(["original", "associate"]).optional(),
   escId: z.string().optional(),
   membershipNumber: z.string().optional(),
 });
@@ -128,18 +128,18 @@ export default function AddMember() {
         form.reset({
           firstName: member.firstName || "",
           lastName: member.lastName || "",
-          fullName: member.fullName,
-          fatherName: member.fatherName,
-          englishName: member.englishName,
-          birthDate: member.birthDate,
-          gender: member.gender as "male" | "female",
-          specialty: member.specialty,
-          email: member.email,
-          phone: member.phone,
-          workAddress: member.workAddress,
+          fullName: member.fullName || "",
+          fatherName: member.fatherName || "",
+          englishName: member.englishName || "",
+          birthDate: member.birthDate || "",
+          gender: (member.gender as "male" | "female") || "male",
+          specialty: member.specialty || "cardiology",
+          email: member.email || "",
+          phone: member.phone || "",
+          workAddress: member.workAddress || "",
           city: member.city || "",
-          joinDate: member.joinDate,
-          membershipType: member.membershipType as "original" | "associate",
+          joinDate: member.joinDate || "",
+          membershipType: (member.membershipType as "original" | "associate") || "original",
           escId: member.escId || "",
           membershipNumber: member.membershipNumber?.toString() || "",
         });
@@ -227,8 +227,8 @@ export default function AddMember() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isAr
-              ? "أكمل البيانات التالية. الحقول المعلَّمة بـ * إجباريّة."
-              : "Fill in the fields below. Fields marked with * are required."}
+              ? "الحقول المعلَّمة بـ * إجباريّة فقط. بقية الحقول اختيارية يمكن إكمالها لاحقاً."
+              : "Only fields marked with * are required. Other fields are optional and can be filled later."}
           </p>
         </div>
       </header>
@@ -260,35 +260,35 @@ export default function AddMember() {
                 )} />
                 <FormField control={form.control} name="fullName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.fullName")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.fullName")}</FormLabel>
                     <FormControl><Input {...field} data-testid="input-fullName" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="englishName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.englishName")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.englishName")}</FormLabel>
                     <FormControl><Input {...field} className="text-left" dir="ltr" data-testid="input-englishName" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="fatherName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.fatherName")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.fatherName")}</FormLabel>
                     <FormControl><Input {...field} data-testid="input-fatherName" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="birthDate" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.birthDate")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.birthDate")}</FormLabel>
                     <FormControl><Input type="date" {...field} data-testid="input-birthDate" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="gender" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.gender")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.gender")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-gender">
@@ -355,7 +355,7 @@ export default function AddMember() {
               >
                 <FormField control={form.control} name="specialty" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.specialty")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.specialty")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-specialty">
@@ -375,7 +375,7 @@ export default function AddMember() {
                 )} />
                 <FormField control={form.control} name="membershipType" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.membershipType")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.membershipType")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-membershipType">
@@ -395,21 +395,21 @@ export default function AddMember() {
                 )} />
                 <FormField control={form.control} name="joinDate" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.joinDate")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.joinDate")}</FormLabel>
                     <FormControl><Input type="date" {...field} data-testid="input-joinDate" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="city" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.city")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.city")}</FormLabel>
                     <FormControl><Input {...field} data-testid="input-city" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="workAddress" render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>{t("field.workAddress")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.workAddress")}</FormLabel>
                     <FormControl><Input {...field} data-testid="input-workAddress" /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -424,7 +424,7 @@ export default function AddMember() {
               >
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.phone")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.phone")}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -440,7 +440,7 @@ export default function AddMember() {
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("field.email")} <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>{t("field.email")}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}

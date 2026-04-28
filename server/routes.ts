@@ -187,6 +187,65 @@ export async function registerRoutes(
     },
   );
 
+  // ---------- Members Bulk Import ----------
+  app.post("/api/members/import", requireAuth, async (req, res, next) => {
+    try {
+      const rows = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+      }
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+      for (const row of rows) {
+        const parsed = insertMemberSchema.safeParse(row);
+        if (!parsed.success) {
+          results.failed++;
+          results.errors.push(
+            `الصف (${row.firstName || "?"} ${row.lastName || "?"}): ${JSON.stringify(parsed.error.flatten().fieldErrors)}`
+          );
+        } else {
+          try {
+            await storage.createMember(parsed.data);
+            results.success++;
+          } catch {
+            results.failed++;
+            results.errors.push(`فشل حفظ: ${row.firstName || ""} ${row.lastName || ""}`);
+          }
+        }
+      }
+      res.json(results);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ---------- Backup & Restore ----------
+  app.get("/api/backup", requireAdmin, async (_req, res, next) => {
+    try {
+      const members = await storage.getMembers();
+      const subscriptions = await Promise.all(
+        members.map((m) => storage.getSubscriptionsByMemberId(m.id))
+      );
+      const users = await storage.getUsers();
+      const backup = {
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        data: {
+          members,
+          subscriptions: subscriptions.flat(),
+          users: users.map(({ password, ...rest }) => rest),
+        },
+      };
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="scva-backup-${new Date().toISOString().split("T")[0]}.json"`
+      );
+      res.json(backup);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ---------- Member PDF ----------
   // Now requires authentication. Uses puppeteer-core; requires Chromium to be
   // available at CHROME_PATH (defaults to /usr/bin/chromium).
