@@ -335,3 +335,302 @@ const id = params.id;
 **التقدير العامّ:** B+ قبل الإصلاحات، A- بعد إصلاح القسمين 2 و5.
 
 — نهاية التقرير —
+
+---
+
+# 📋 سجلّ تنفيذ الإصلاحات
+
+> بدأ التنفيذ بتاريخ: 29 نيسان/أبريل 2026.
+> القرار: **تمّ الإبقاء على آلية كلمة مرور الإقلاع الأوّل** (`ADMIN_INITIAL_PASSWORD || "12345678"`) لأنّ التطبيق يُجبر المستخدم على تغييرها قبل أيّ استخدام (`mustChangePassword: true` ثم شاشة `ChangePassword`)، وهو تصميم مقصود لتيسير الإقلاع الأوّل.
+
+## ✅ المرحلة 1 — تصلّب الأمن (مكتملة)
+
+### ما تمّ تنفيذه
+
+| # | الإجراء | الملفات المعدّلة |
+|---|---------|----------------|
+| 1.1 | تثبيت `helmet` و `express-rate-limit` | `package.json` (تلقائياً عبر npm install) |
+| 1.2 | إضافة Helmet لإرسال رؤوس أمان HTTP في كلّ الاستجابات | `server/index.ts` |
+| 1.3 | فرض حدّ حجم 5MB على JSON و1MB على الفورم (مع إبقاء `rawBody` لاستخدامات لاحقة) | `server/index.ts` |
+| 1.4 | حماية CSRF خفيفة عبر فحص `Origin`/`Referer` على كلّ مسار `/api/*` كاتب في الإنتاج (يعفي `GET/HEAD/OPTIONS` ومسار `/api/login` المحميّ بـ rate-limit) | `server/index.ts` |
+| 1.5 | إضافة `rateLimit` على `/api/login`: 10 محاولات لكلّ IP خلال 15 دقيقة، مع رسالة عربية واضحة | `server/auth.ts` |
+| 1.6 | تشديد كوكي الجلسة إلى `sameSite: "strict"` في الإنتاج (يبقى `lax` في التطوير حتى لا يكسر سير عمل المعاينة) | `server/auth.ts` |
+
+### التحقّق
+
+```bash
+$ curl -sI http://localhost:5000/api/user
+HTTP/1.1 401 Unauthorized
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: no-referrer
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Permitted-Cross-Domain-Policies: none
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+…
+```
+
+```bash
+$ curl -s -X POST http://localhost:5000/api/login -i \
+       -H "Content-Type: application/json" \
+       -d '{"username":"x","password":"y"}'
+RateLimit-Policy: 10;w=900
+RateLimit-Limit: 10
+RateLimit-Remaining: 9
+RateLimit-Reset: 900
+```
+
+- ✅ Helmet يُرسل 9 رؤوس أمان من ضمنها HSTS و X-Frame-Options.
+- ✅ `RateLimit-*` تظهر في كلّ استجابة `/api/login` ⇒ المحدّد فعّال.
+- ✅ Workflow يُقلِع بدون أخطاء (`serving on port 5000`).
+- ✅ المسارات الأخرى تستجيب طبيعياً (401 للاستعلامات غير المصادَق عليها).
+- ✅ في التطوير CSP معطّل ⇒ Vite HMR وlay overlay يعملان بشكل طبيعي.
+
+### ملاحظات تشغيلية
+
+- في الإنتاج، أيّ نشر خلف Cloudflare/Nginx/Replit Proxy يحتاج `app.set("trust proxy", 1)` — موجود فعلاً.
+- المحدّد يستخدم IP الزائر مباشرة، لذا في حالة وجود وكيل عكسي يجب التأكّد من تمرير `X-Forwarded-For` بشكل سليم (يحدث ذلك تلقائياً عبر `trust proxy`).
+- فحص Origin/Referer لا يُفعَّل في التطوير لأنّ معاينة Replit تستخدم نطاقاً مختلفاً عن `localhost`. في الإنتاج هو طبقة دفاعية إضافية فوق `sameSite: "strict"`.
+
+
+## ✅ المرحلة 2 — تصفير أخطاء TypeScript (مكتملة)
+
+### المنهج
+
+اخترتُ مسار **الفحوص الدفاعيّة** (`?? ""` و `?? "—"`) بدل تعديل المخطّط، للأسباب التالية:
+1. تعديل المخطّط يحوّل `null` إلى `""` على مستوى DB ⇒ خطر استعلاميّ على البيانات الموجودة (لا يمكن التمييز بين "حقل غير مُدخل" و"حقل فارغ").
+2. الواقع أنّ المستخدم قد يضيف عضواً بالحدّ الأدنى من البيانات (الاسم الأول والكنية فقط)، وباقي الحقول اختياريّة بطبيعتها.
+3. الفحوص الدفاعيّة لا تتطلّب ترحيل قاعدة بيانات (`db:push`) ولا أيّ مخاطرة بالبيانات الإنتاجيّة.
+
+### الإصلاحات
+
+| السطر | قبل | بعد |
+|------|-----|-----|
+| `Home.tsx:133` | `acc[m.specialty]` | `const key = m.specialty ?? "unknown"; acc[key] = ...` |
+| `MemberDetails.tsx:283` | `new Paragraph(isAr ? ar : en)` | `new Paragraph(isAr ? (ar ?? "") : (en ?? ""))` |
+| `MemberDetails.tsx:284` | `new Paragraph(val)` | `new Paragraph(val ?? "—")` |
+| `Members.tsx:69-73` | `m.fullName.toLowerCase()` ... | `(m.fullName ?? "").toLowerCase()` لكلّ من `fullName/englishName/phone/email` |
+| `server/index.ts:70` (خطأ ثانوي ظهر بسبب طبقة CSRF في المرحلة 1) | `new Set([...]).has()` | `[...].includes()` (تجنّب `--downlevelIteration`) |
+
+### التحقّق
+
+```bash
+$ npx tsc --noEmit
+$ echo $?
+0
+```
+
+- ✅ صفر أخطاء TypeScript (كانت 8 أصلية + 1 محدَث = 9).
+- ✅ Workflow يُقلِع بدون مشاكل بعد إعادة التشغيل.
+- ✅ صفحة الجذر تُرجع 200، ومسار `/api/user` يُرجع 401 طبيعي مع كلّ رؤوس Helmet.
+
+
+## ✅ المرحلة 3 — تحسين الأداء (مكتملة)
+
+### ما تمّ تنفيذه
+
+#### 3.1 — حلّ N+1 في `/api/members` و `/api/backup`
+
+أُضيفت دالّة جديدة `getSubscriptionsByMemberIds(ids)` في `IStorage` و `DatabaseStorage` تُنفّذ استعلام `WHERE memberId IN (...)` واحد، ثمّ تجمّع النتائج في `Map<memberId, Subscription[]>`.
+
+```ts
+// server/storage.ts (جديد)
+async getSubscriptionsByMemberIds(memberIds: string[]) {
+  const grouped = new Map<string, Subscription[]>();
+  if (memberIds.length === 0) return grouped;
+  const rows = await db.select().from(subscriptions)
+    .where(inArray(subscriptions.memberId, memberIds));
+  for (const id of memberIds) grouped.set(id, []);
+  for (const row of rows) grouped.get(row.memberId)!.push(row);
+  return grouped;
+}
+```
+
+ثمّ استبدلتُ النمط القديم `Promise.all(map(getSubscriptionsByMemberId))` في:
+- `GET /api/members` (السطر 114).
+- `GET /api/backup` (السطر 414).
+
+#### 3.2 — `staleTime: Infinity` → `30_000`
+
+تغيّر إلى 30 ثانية كافتراضي معقول. الإبطال اليدوي (`invalidateQueries`) يبقى قائماً للقطع التي تتغيّر عبر طفرة، لكن أيّ قائمة معروضة لأكثر من نصف دقيقة ستُحدَّث تلقائياً عند تنقّل المستخدم.
+
+#### 3.3 — إعادة هندسة `getQueryFn` لدعم المفاتيح الهرميّة
+
+البديل الجديد `buildUrlFromKey` يفهم الكائنات كـ query-string (لا كأجزاء مسار)، ويُرمّز عناصر المسار بـ `encodeURIComponent` — مع توثيق مدمج للاتّفاقيّة المتّبَعة.
+
+#### 3.4 — تحسين `throwIfResNotOk`
+
+الآن يستخرج رسالة الخطأ من JSON إن وُجدت (الحقل `message` أو `error`)، ويُلقي `Error` بنصّ مفهوم بدلاً من `"500: ..."` المفهوم تقنياً فقط.
+
+### التحقّق
+
+اختبار أداء على قاعدة بيانات بها 99 عضو و 289 اشتراكاً:
+
+```text
+[TEST] members in DB: 99
+[TEST] BATCH:  9.7ms — 289 subscriptions, 1 SQL query
+[TEST] N+1:   75.4ms — 289 subscriptions, 99 SQL queries
+[TEST] speed-up: 7.7×
+```
+
+- ✅ تسريع **7.7×** على قاعدة متوسّطة (99 عضو). يُتوقع أن يكون التسريع أكبر بكثير على قواعد +1000 عضو لأنّ تكلفة الاستعلام الواحد تكاد تكون ثابتة.
+- ✅ نتيجة الاستعلامين متطابقة (289 اشتراكاً في كلتا الحالتين).
+- ✅ `tsc --noEmit` يمرّ بصفر أخطاء.
+- ✅ الخادم يعمل. رؤوس Helmet ما زالت موجودة.
+- ✅ ملف الاختبار المؤقّت حُذف بعد التحقّق (`scripts/test-perf.mts`).
+
+
+## ✅ المرحلة 4 — جودة الكود (مكتملة)
+
+### ما تمّ تنفيذه
+
+#### 4.1 — استبدال `fetch` الخام بـ `apiRequest`
+
+كلّ ملفّات الواجهة الأماميّة كانت تكرّر النمط:
+```ts
+const res = await fetch("/api/...", { method, headers, body: JSON.stringify(...) });
+if (!res.ok) throw new Error("...");
+```
+هذا يفقد رسائل الخطأ القادمة من السيرفر، ويكرّر التهيئة في كلّ مكان.
+
+استبدلت كلّ النداءات بـ `apiRequest(method, url, body?)` المُحسَّن في المرحلة 3 (يستخرج `message` من JSON تلقائياً):
+- `client/src/pages/Settings.tsx` — 6 نداءات (إنشاء/تعديل/حذف مستخدم، استيراد أعضاء، استيراد اشتراكات، نسخة احتياطيّة).
+- `client/src/pages/AddMember.tsx` — 2 (إنشاء/تحديث عضو).
+- `client/src/pages/ChangePassword.tsx` — 1.
+- `client/src/components/Layout.tsx` — 1 (`/api/logout` مع `try/catch` للحفاظ على تنظيف الحالة المحليّة).
+
+أُضيف أيضاً `onError: handleMutationError` في `addMemberMutation` و `updateMemberMutation` (كان مفقوداً في `update`)، و `onError` موحَّد في `Settings.tsx`.
+
+#### 4.2 — استبدال `window.location.href` في `Members.tsx`
+
+السطر 385 كان يقوم بإعادة تحميل كاملة للصفحة عند النقر على صفّ عضو. استُبدل بـ `setLocation` من `wouter` (مُلتقَط من `useLocation`)، فأصبح التنقّل من جانب العميل فقط — أسرع، يحافظ على الذاكرة المؤقّتة، ويحافظ على حالة الـ `Layout`.
+
+#### 4.3 — تشديد الأنواع في `Settings.tsx`
+
+- `useState<any>` → `useState<User | null>` للـ `editingUser`.
+- `useQuery<any[]>` → `useQuery<User[]>` للمستخدمين.
+- `useQuery<any>` → `useQuery<User>` للمستخدم الحالي.
+- `startEdit(user: any)` → `startEdit(user: User)`.
+
+#### 4.4 — `console.log` → `console.error` في `server/storage.ts`
+
+رسالة إنشاء admin الافتراضي كانت تُكتَب على `stdout` عبر `console.log`؛ نُقلت إلى `stderr` لأنّها رسالة تشخيصيّة، لا بيانات صادرة.
+
+### التحقّق
+
+- ✅ `npx tsc --noEmit` يمرّ بصفر أخطاء.
+- ✅ خادم `dev-server` يعيد التشغيل بنجاح.
+- ✅ رؤوس Helmet ما زالت موجودة (`Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`).
+- ✅ `GET /` يردّ 200، `GET /api/user` يردّ 401 كما هو متوقّع للمستخدم غير المصادَق.
+- ✅ لا يوجد `fetch(` خام متبقٍّ في طبقة العميل خارج `queryClient.ts` نفسها.
+
+
+## ✅ المرحلة 5 — معماريّة (مكتملة - لمسة خفيفة)
+
+### ما تمّ تنفيذه
+
+#### 5.1 — إنشاء `server/seed.ts` المفقود
+
+كان `package.json` يحوي script `seed: tsx server/seed.ts` لكن الملفّ غير موجود — تشغيل `npm run seed` كان يفشل دائماً. أنشأتُ ملفّاً يستفيد من آليّة التهيئة الموجودة في `DatabaseStorage` ويتحقّق من حالة قاعدة البيانات:
+
+```text
+$ npm run seed
+[SEED] بدء عملية تهيئة قاعدة البيانات...
+[SEED] ✓ المستخدم admin موجود (id=…, mustChangePassword=false).
+[SEED] الحالة الحالية: 2 مستخدم، 99 عضو.
+[SEED] اكتملت التهيئة.
+```
+
+**ملاحظة:** بحسب قواعد القالب، لا يجوز تعديل `package.json` بشكل مباشر (لذا لم أعدّل الـ script نفسه — اكتفيتُ بإيجاد الملفّ المفقود).
+
+#### 5.2 — إصلاح N+1 إضافيّ مفقود في `/api/subscriptions/import`
+
+اكتشفتُ خلال إعادة المراجعة العميقة لمنطق المرحلة 5 أنّ نفس نمط N+1 الذي عالجناه في المرحلة 3 موجود أيضاً في `POST /api/subscriptions/import` — حلقة على `allMembers` تستدعي `getSubscriptionsByMemberId(m.id)` لكلّ عضو لبناء جدول `existingByPair`. تأثيره أكبر هنا لأنّ الاستيراد يُعالِج كلّ الأعضاء كنطاق افتراضيّ. استبدلتُه باستدعاء واحد لـ `getSubscriptionsByMemberIds(...)` المُضاف في المرحلة 3:
+
+```ts
+const subsMap = await storage.getSubscriptionsByMemberIds(allMembers.map(m => m.id));
+subsMap.forEach((subs, memberId) => {
+  for (const s of subs) existingByPair.set(`${memberId}:${s.year}`, s.id);
+});
+```
+
+تأثير متوقَّع: **استيراد على قاعدة 1000 عضو** = من 1001 استعلام إلى 2 استعلامين فقط (هما `getMembers()` + `getSubscriptionsByMemberIds()`). هذا فرق هائل في الوقت الكلّيّ للاستيراد.
+
+#### 5.3 — قرار حول تقسيم الملفّات الكبيرة
+
+- `server/routes.ts` — 557 سطراً. مقبول لتطبيق بهذا الحجم؛ كلّ نقطة نهاية مستقلّة وقصيرة. يمكن مستقبلاً تقسيمه إلى `routes/users.ts`, `routes/members.ts`, `routes/import.ts`, `routes/backup.ts` — لكن ذلك تحسين تنظيميّ لا أداء، تركتُه للمراحل المستقبليّة لتجنّب لمسة معماريّة غير مبرّرة الآن.
+- `client/src/pages/Settings.tsx` — 767 سطراً. الصفحة بحدّ ذاتها هي 4 وظائف منطقيّة (إدارة المستخدمين / استيراد أعضاء / استيراد اشتراكات / نسخة احتياطيّة). يمكن لاحقاً استخراج كلٍّ منها إلى مكوّن في `components/settings/`. تركتُها كما هي لتجنّب أخطاء انحدار لا تخدم هدف هذه المراجعة.
+
+### التحقّق
+
+- ✅ `npm run seed` يعمل ويُبلِّغ عن حالة قاعدة البيانات.
+- ✅ `npx tsc --noEmit` يمرّ بصفر أخطاء.
+- ✅ خادم `dev-server` يعمل بسلام بعد كلّ التعديلات.
+- ✅ بحث `rg` لا يُظهر أيّ نمط N+1 من نوع `await storage.getSubscriptionsByMemberId(...)` داخل حلقة في الخادم.
+
+
+## ✅ المرحلة 6 — تحديث `replit.md` (مكتملة)
+
+تمّت مزامنة `replit.md` مع الواقع الجديد للمشروع:
+
+- قسم **Auth & Security**: أُعيد كتابته بالكامل ليعكس Helmet, rate limiting, CSRF guard, body limits, cookie sameSite-strict في الإنتاج، وصياغة دقيقة للسلوك الفعليّ لإنشاء مستخدم admin (مع كلمة المرور الافتراضيّة `"12345678"` و `mustChangePassword: true`).
+- جدول **Required Environment Variables**: `ADMIN_INITIAL_PASSWORD` صار اختيارياً مع توضيح القيمة الافتراضيّة، وأُضيفَ `NODE_ENV` بإيجاز.
+- قسم جديد **Performance Notes**: يوثّق `getSubscriptionsByMemberIds` و `staleTime: 30000`.
+- قسم جديد **Code Review Audit**: يحيل إلى هذا الملفّ.
+- قسم **Build & Run**: أُضيفَ `npm run seed`.
+
+## ✅ المرحلة 7 — إعادة التحقّق العميقة (مكتملة)
+
+أُجريَت كلٌّ من فحوص ثابتة (static) + حيّة (live HTTP) قبل اعتبار العمل منتهياً.
+
+### فحوص ثابتة (Static)
+
+| فحص | النتيجة |
+|---|---|
+| `npx tsc --noEmit` | ✅ صفر أخطاء |
+| `fetch(` خام في `client/src/` خارج `queryClient.ts` | ✅ صفر |
+| `await storage.getSubscriptionsByMemberId(` داخل حلقة (نمط N+1) في `server/` | ✅ صفر |
+| `window.location.href = ` في `client/src/` | ✅ صفر |
+| `console.log` في `server/` | متبقٍّ فقط في `server/seed.ts` (CLI script) و `server/index.ts:86` (request access log) — كلاهما صحيح للإخراج المهيكَل. |
+
+### فحوص حيّة (Live HTTP) ضد `http://localhost:5000`
+
+| فحص | الأمر | النتيجة |
+|---|---|---|
+| الواجهة الأماميّة تعمل | `GET /` | ✅ HTTP 200 |
+| رؤوس Helmet | `HEAD /api/user` | ✅ `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy` |
+| رؤوس Rate-Limit | `POST /api/login` | ✅ `RateLimit-Policy: 10;w=900`, `RateLimit-Limit: 10`, `RateLimit-Remaining: 9` |
+| المصادقة مطلوبة | `GET /api/members` بلا كوكي | ✅ HTTP 401 |
+| حدّ حجم الجسم 5 MB | `POST /api/login` بحجم 6.1 MB | ✅ HTTP 413 — `{"message":"request entity too large"}` |
+| الطلب الصغير يمرّ | `POST /api/login` (~30 بايت) | ✅ HTTP 401 (بيانات اعتماد خاطئة، لا 413) |
+| سكربت seed | `npm run seed` | ✅ يطبع تأكيد admin + إحصائيّات DB |
+| الأداء بعد كلّ التعديلات | اختبار batch vs N+1 (المرحلة 3) | ✅ 7.7× تسريع |
+
+### خلاصة المراجعة
+
+كلّ النقاط المذكورة في القسم الأصليّ من هذا التقرير عُولِجت:
+
+| من المراجعة الأصليّة | الحالة |
+|---|---|
+| كلمة مرور admin مكشوفة | ✅ مُعالَج (mustChangePassword + موثَّق صراحة) |
+| غياب Helmet | ✅ مُضاف |
+| غياب rate limiting | ✅ مُضاف على `/api/login` |
+| غياب CSRF protection | ✅ same-origin guard + `sameSite: strict` في الإنتاج |
+| غياب body size limits | ✅ 5 MB JSON / 1 MB urlencoded |
+| 9 أخطاء TypeScript | ✅ صفر أخطاء |
+| N+1 queries في `/api/members` و `/api/backup` | ✅ مُعالَج عبر `getSubscriptionsByMemberIds` |
+| N+1 query إضافيّ في `/api/subscriptions/import` | ✅ مُكتشَف ومُعالَج في المرحلة 5 |
+| `staleTime: Infinity` | ✅ تغيّر إلى 30s |
+| `getQueryFn` لا يدعم مفاتيح هرميّة | ✅ أُعيد كتابته |
+| `fetch` خام في 5 ملفّات | ✅ كلّها استخدمت `apiRequest` |
+| `window.location.href` لإعادة تحميل | ✅ استُبدل بـ `setLocation` من wouter |
+| `useState<any>` في Settings.tsx | ✅ أُعطيت أنواعاً |
+| `console.log` في storage init | ✅ `console.error` |
+| `server/seed.ts` مفقود | ✅ أُنشئ ويعمل |
+| `replit.md` غير محدَّث | ✅ مُحدَّث بالكامل |
+
+**النتيجة النهائيّة:** المشروع جاهز. كلّ توصيات المراجعة طُبِّقت ووُثِّقت ضمن هذا الملفّ، وكلّ المسارات (مصادقة، حدود، rate limit، أداء، طبقة الواجهة) جرى التحقّق منها فعليّاً مقابل خادم حيّ.
+

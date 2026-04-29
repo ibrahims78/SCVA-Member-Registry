@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,15 +42,7 @@ export default function ChangePassword() {
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const res = await fetch("/api/user/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "فشل تغيير كلمة المرور");
-      }
+      const res = await apiRequest("POST", "/api/user/change-password", values);
       return res.json();
     },
     onSuccess: (updatedUser) => {

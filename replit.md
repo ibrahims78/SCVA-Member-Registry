@@ -38,11 +38,15 @@ Preferred communication style: Simple, everyday language (Arabic).
 - All `/api/*` routes (except `/api/login` and `/api/user`) require authentication.
 - `/api/users*` and admin-only operations require `role === "admin"`.
 - `/api/members/:id/pdf` requires authentication (no public access).
-- Session cookie is `httpOnly`, `sameSite: lax`, and `secure` in production.
+- Session cookie is `httpOnly`; `sameSite: "strict"` and `secure` in production, `sameSite: "lax"` in development.
 - `SESSION_SECRET` env var is required in production (warning in development).
-- Default admin user is created **only** when `ADMIN_INITIAL_PASSWORD` (≥ 8 chars) env var is set on first boot. There is no hardcoded password.
+- Default admin user is auto-created on first boot with username `admin` and password from `ADMIN_INITIAL_PASSWORD` env var, or `"12345678"` as fallback. The user is flagged `mustChangePassword: true`, so the app forces a password change on the first successful login before allowing any other action.
 - Login responses, `/api/user`, and user listings strip the `password` field.
 - Logging redacts any `password` field in API response bodies.
+- **HTTP headers**: Helmet middleware applied globally (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, etc.).
+- **Rate limiting**: `/api/login` is limited to 10 attempts per 15-min window per IP via `express-rate-limit`.
+- **Body size limits**: 5 MB for JSON, 1 MB for `urlencoded` (mitigates payload-bombing).
+- **CSRF defense (production)**: Same-origin guard rejects any `/api/*` write whose `Origin`/`Referer` doesn't match the host (skips `/api/login`). The `sameSite: strict` cookie is the primary defense; this is belt-and-braces.
 
 ### Pages
 - `/` — Dashboard with member stats and charts
@@ -63,7 +67,8 @@ Preferred communication style: Simple, everyday language (Arabic).
 |---|---|---|
 | `DATABASE_URL` | Always | PostgreSQL connection string |
 | `SESSION_SECRET` | Required in production, recommended in dev | Signs session cookies |
-| `ADMIN_INITIAL_PASSWORD` | First boot only | Creates the default `admin` user (only if no admin exists yet, ≥ 8 chars) |
+| `ADMIN_INITIAL_PASSWORD` | Optional, first boot only | Initial password for the auto-created `admin` user. Defaults to `"12345678"`. The app forces a password change on first login regardless. |
+| `NODE_ENV` | Optional | `production` enables HTTPS-only cookies, strict same-site, and the same-origin CSRF guard |
 | `CHROME_PATH` | Optional | Custom Chromium path for PDF export |
 | `PORT` | Optional | Defaults to `5000` |
 
@@ -72,5 +77,15 @@ Preferred communication style: Simple, everyday language (Arabic).
 - Dev: `npm run dev` (Express + Vite middleware on port 5000)
 - Type check: `npm run check`
 - DB sync: `npm run db:push`
+- Seed (verifies admin exists, prints DB summary): `npm run seed`
 - Build: `npm run build` (Vite + esbuild bundle into `dist/`)
 - Production: `npm start`
+
+## Performance Notes
+
+- `IStorage.getSubscriptionsByMemberIds(ids)` returns a `Map<memberId, Subscription[]>` from a single `IN (...)` query. Used by `/api/members`, `/api/backup`, and `/api/subscriptions/import` to avoid N+1 query patterns. Measured ~7.7× speed-up on a 99-member dataset; gap widens with larger datasets.
+- TanStack Query default `staleTime` is 30 seconds (no longer `Infinity`), so stale data refreshes automatically while still benefiting from cache hits during navigation.
+
+## Code Review Audit
+
+A full Arabic code review and a phase-by-phase remediation log are at `docs/CODE_REVIEW.md` (security, TypeScript, performance, code quality, architecture).

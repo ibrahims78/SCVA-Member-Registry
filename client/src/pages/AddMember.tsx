@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 const memberSchema = z.object({
   firstName: z.string().min(1, "الاسم الأول مطلوب"),
@@ -153,17 +154,17 @@ export default function AddMember() {
     }
   }, [isEdit, params?.id, getMember, form, setLocation, toast, isAr]);
 
+  const handleMutationError = (error: Error) => {
+    toast({
+      title: isAr ? "خطأ" : "Error",
+      description: error.message,
+      variant: "destructive",
+    });
+  };
+
   const addMemberMutation = useMutation({
     mutationFn: async (newMember: Omit<MemberFormValues, "membershipNumber">) => {
-      const res = await fetch("/api/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMember),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "Failed to save");
-      }
+      const res = await apiRequest("POST", "/api/members", newMember);
       return res.json();
     },
     onSuccess: () => {
@@ -171,23 +172,12 @@ export default function AddMember() {
       toast({ title: t("app.success") || (isAr ? "تم الحفظ بنجاح" : "Saved successfully") });
       setLocation("/members");
     },
-    onError: (error: Error) => {
-      toast({
-        title: isAr ? "خطأ" : "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    onError: handleMutationError,
   });
 
   const updateMemberMutation = useMutation({
     mutationFn: async (updates: Omit<MemberFormValues, "membershipNumber">) => {
-      const res = await fetch(`/api/members/${params?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      if (!res.ok) throw new Error("Failed to update");
+      const res = await apiRequest("PATCH", `/api/members/${params?.id}`, updates);
       return res.json();
     },
     onSuccess: () => {
@@ -195,6 +185,7 @@ export default function AddMember() {
       toast({ title: isAr ? "تمّ التحديث بنجاح" : "Updated successfully" });
       setLocation(`/member/${params?.id}`);
     },
+    onError: handleMutationError,
   });
 
   const isPending = addMemberMutation.isPending || updateMemberMutation.isPending;

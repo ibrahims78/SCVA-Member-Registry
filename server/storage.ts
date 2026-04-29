@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   members,
   subscriptions,
@@ -30,6 +30,9 @@ export interface IStorage {
   deleteMember(id: string): Promise<void>;
 
   getSubscriptionsByMemberId(memberId: string): Promise<Subscription[]>;
+  getSubscriptionsByMemberIds(
+    memberIds: string[],
+  ): Promise<Map<string, Subscription[]>>;
   createSubscription(
     subscription: InsertSubscription & { memberId: string },
   ): Promise<Subscription>;
@@ -61,7 +64,10 @@ export class DatabaseStorage implements IStorage {
         role: "admin",
         mustChangePassword: true,
       });
-      console.log(
+      // Use stderr for diagnostics so production log collectors pick it up
+      // alongside other startup messages, while not polluting stdout streams
+      // used by structured loggers.
+      console.error(
         "[STORAGE] تم إنشاء مستخدم admin الافتراضي. سيُطلب تغيير كلمة المرور عند أول تسجيل دخول.",
       );
     } catch (error) {
@@ -149,6 +155,26 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.memberId, memberId));
+  }
+
+  async getSubscriptionsByMemberIds(
+    memberIds: string[],
+  ): Promise<Map<string, Subscription[]>> {
+    const grouped = new Map<string, Subscription[]>();
+    if (memberIds.length === 0) return grouped;
+
+    const rows = await db
+      .select()
+      .from(subscriptions)
+      .where(inArray(subscriptions.memberId, memberIds));
+
+    for (const id of memberIds) grouped.set(id, []);
+    for (const row of rows) {
+      const list = grouped.get(row.memberId);
+      if (list) list.push(row);
+      else grouped.set(row.memberId, [row]);
+    }
+    return grouped;
   }
 
   async createSubscription(

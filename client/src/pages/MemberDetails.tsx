@@ -280,8 +280,8 @@ export default function MemberDetails() {
               ["البريد الإلكتروني", "Email", member.email],
             ].map(([ar, en, val]) => new DocxTableRow({
               children: [
-                new DocxTableCell({ children: [new Paragraph(isAr ? ar : en)] }),
-                new DocxTableCell({ children: [new Paragraph(val)] }),
+                new DocxTableCell({ children: [new Paragraph(isAr ? (ar ?? "") : (en ?? ""))] }),
+                new DocxTableCell({ children: [new Paragraph(val ?? "—")] }),
               ],
             })),
           }),

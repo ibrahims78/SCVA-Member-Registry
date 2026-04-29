@@ -1,9 +1,10 @@
-import { type Express } from "express";
+import { type Express, type Request, type Response, type NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
 import connectPgSimple from "connect-pg-simple";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { loginSchema, type User as SelectUser } from "@shared/schema";
@@ -42,7 +43,7 @@ export async function setupAuth(app: Express) {
     cookie: {
       secure: isProduction,
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: isProduction ? "strict" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
     store: new PgSession({
@@ -86,7 +87,19 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      message:
+        "تجاوزت عدد محاولات تسجيل الدخول المسموح بها. يرجى المحاولة بعد 15 دقيقة.",
+    },
+    skip: () => process.env.NODE_ENV === "test",
+  });
+
+  app.post("/api/login", loginLimiter, (req: Request, res: Response, next: NextFunction) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "بيانات غير صالحة" });

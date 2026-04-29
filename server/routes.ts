@@ -111,12 +111,13 @@ export async function registerRoutes(
   app.get("/api/members", requireAuth, async (_req, res, next) => {
     try {
       const members = await storage.getMembers();
-      const membersWithSubs = await Promise.all(
-        members.map(async (member) => {
-          const subs = await storage.getSubscriptionsByMemberId(member.id);
-          return { ...member, subscriptions: subs };
-        }),
+      const subsMap = await storage.getSubscriptionsByMemberIds(
+        members.map((m) => m.id),
       );
+      const membersWithSubs = members.map((member) => ({
+        ...member,
+        subscriptions: subsMap.get(member.id) ?? [],
+      }));
       res.json(membersWithSubs);
     } catch (err) {
       next(err);
@@ -255,12 +256,15 @@ export async function registerRoutes(
         byName.set(nameKey, m);
       }
 
-      // Cache existing (memberId, year) -> subscription id, to skip or update
+      // Cache existing (memberId, year) -> subscription id, to skip or update.
+      // Single batched query instead of N queries (one per member).
       const existingByPair = new Map<string, string>();
-      for (const m of allMembers) {
-        const subs = await storage.getSubscriptionsByMemberId(m.id);
-        for (const s of subs) existingByPair.set(`${m.id}:${s.year}`, s.id);
-      }
+      const subsMap = await storage.getSubscriptionsByMemberIds(
+        allMembers.map((m) => m.id),
+      );
+      subsMap.forEach((subs, memberId) => {
+        for (const s of subs) existingByPair.set(`${memberId}:${s.year}`, s.id);
+      });
 
       const results = {
         success: 0,
@@ -410,16 +414,17 @@ export async function registerRoutes(
   app.get("/api/backup", requireAdmin, async (_req, res, next) => {
     try {
       const members = await storage.getMembers();
-      const subscriptions = await Promise.all(
-        members.map((m) => storage.getSubscriptionsByMemberId(m.id))
+      const subsMap = await storage.getSubscriptionsByMemberIds(
+        members.map((m) => m.id),
       );
+      const allSubscriptions = Array.from(subsMap.values()).flat();
       const users = await storage.getUsers();
       const backup = {
         version: "1.0",
         exportedAt: new Date().toISOString(),
         data: {
           members,
-          subscriptions: subscriptions.flat(),
+          subscriptions: allSubscriptions,
           users: users.map(({ password, ...rest }) => rest),
         },
       };

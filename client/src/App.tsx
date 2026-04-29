@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, getQueryFn } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
@@ -21,12 +21,7 @@ import ChangePassword from "./pages/ChangePassword";
 function Router() {
   const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/user"],
-    queryFn: async () => {
-      const res = await fetch("/api/user", { credentials: "include" });
-      if (res.status === 401) return null;
-      if (!res.ok) throw new Error("Failed to fetch user");
-      return res.json();
-    },
+    queryFn: getQueryFn<User | null>({ on401: "returnNull" }),
     retry: false,
   });
 

@@ -34,7 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BrandMark } from "@/components/BrandMark";
 import type { User } from "@shared/schema";
 
@@ -65,7 +65,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [collapsed]);
 
   const handleLogout = async () => {
-    await fetch("/api/logout", { method: "POST" });
+    try {
+      await apiRequest("POST", "/api/logout");
+    } catch {
+      // Even if logout fails server-side, clear client state
+    }
     queryClient.setQueryData(["/api/user"], null);
     await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     setLocation("/");

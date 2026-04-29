@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -16,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, type User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, UserPlus, Pencil, Trash2, ShieldCheck,
@@ -72,7 +73,7 @@ interface ImportResult {
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -84,17 +85,16 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subFileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: users, isLoading } = useQuery<any[]>({ queryKey: ["/api/users"] });
-  const { data: currentUser } = useQuery<any>({ queryKey: ["/api/user"] });
+  const { data: users, isLoading } = useQuery<User[]>({ queryKey: ["/api/users"] });
+  const { data: currentUser } = useQuery<User>({ queryKey: ["/api/user"] });
+
+  const onMutationError = (err: Error) => {
+    toast({ title: "خطأ", description: err.message, variant: "destructive" });
+  };
 
   const createUserMutation = useMutation({
     mutationFn: async (data: UserFormValues) => {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to create user");
+      const res = await apiRequest("POST", "/api/users", data);
       return res.json();
     },
     onSuccess: () => {
@@ -102,16 +102,12 @@ export default function Settings() {
       toast({ title: "تم النجاح", description: "تم إضافة المستخدم بنجاح" });
       setIsDialogOpen(false);
     },
+    onError: onMutationError,
   });
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<UserFormValues> }) => {
-      const res = await fetch(`/api/users/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update user");
+      const res = await apiRequest("PATCH", `/api/users/${id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -119,17 +115,18 @@ export default function Settings() {
       toast({ title: "تم النجاح", description: "تم تحديث بيانات المستخدم" });
       setIsDialogOpen(false);
     },
+    onError: onMutationError,
   });
 
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete user");
+      await apiRequest("DELETE", `/api/users/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "تم النجاح", description: "تم حذف المستخدم" });
     },
+    onError: onMutationError,
   });
 
   const form = useForm<UserFormValues>({
@@ -147,9 +144,13 @@ export default function Settings() {
     }
   };
 
-  const startEdit = (user: any) => {
+  const startEdit = (user: User) => {
     setEditingUser(user);
-    form.reset({ username: user.username, password: "", role: user.role });
+    form.reset({
+      username: user.username,
+      password: "",
+      role: user.role as "admin" | "employee",
+    });
     setIsDialogOpen(true);
   };
 
@@ -220,10 +221,9 @@ export default function Settings() {
         return obj;
       });
 
-      const res = await fetch("/api/members/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: members, updateExisting: memberUpdateExisting }),
+      const res = await apiRequest("POST", "/api/members/import", {
+        rows: members,
+        updateExisting: memberUpdateExisting,
       });
       const result: ImportResult = await res.json();
       setImportResult(result);
@@ -311,10 +311,9 @@ export default function Settings() {
         return obj;
       });
 
-      const res = await fetch("/api/subscriptions/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows, updateExisting: subUpdateExisting }),
+      const res = await apiRequest("POST", "/api/subscriptions/import", {
+        rows,
+        updateExisting: subUpdateExisting,
       });
       const result: ImportResult = await res.json();
       setSubImportResult(result);
@@ -341,8 +340,7 @@ export default function Settings() {
   const handleBackup = async () => {
     setIsBackingUp(true);
     try {
-      const res = await fetch("/api/backup");
-      if (!res.ok) throw new Error("فشل في تحميل النسخة الاحتياطية");
+      const res = await apiRequest("GET", "/api/backup");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

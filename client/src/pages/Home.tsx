@@ -130,7 +130,8 @@ export default function Home() {
     const totalAssociate = members.filter((m) => m.membershipType === "associate").length;
 
     const specialtyStats = members.reduce<Record<string, number>>((acc, m) => {
-      acc[m.specialty] = (acc[m.specialty] || 0) + 1;
+      const key = m.specialty ?? "unknown";
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
 

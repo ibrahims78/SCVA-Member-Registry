@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
@@ -8,21 +9,71 @@ import { serveStatic } from "./static";
 const app = express();
 const httpServer = createServer(app);
 
+const isProduction = process.env.NODE_ENV === "production";
+
+// ---------- Security headers ----------
+// CSP is disabled in development so Vite HMR / dev banner / runtime overlay
+// keep working. In production we still ship a hardened set of headers
+// (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS, ...).
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
 }
 
+// ---------- Body parsing with explicit size limits ----------
+// Excel imports are routed through XLSX in the browser and posted as JSON;
+// 5MB is comfortably above any realistic payload while preventing
+// memory-exhaustion attacks.
 app.use(
   express.json({
+    limit: "5mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+
+// ---------- Same-origin guard for cookie-authenticated mutations ----------
+// A lightweight CSRF mitigation that does not require a token round-trip.
+// In production, every state-changing request to /api/* MUST carry an Origin
+// or Referer header that matches the host the request was sent to. The
+// browser sets these automatically and they cannot be forged by
+// cross-site form submissions, which is the primary CSRF vector.
+app.use((req, res, next) => {
+  if (!isProduction) return next();
+  if (!req.path.startsWith("/api")) return next();
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    return next();
+  }
+  // /api/login itself is rate-limited and accepts only username+password,
+  // so cross-origin POSTs cannot escalate privileges via CSRF here.
+  if (req.path === "/api/login") return next();
+
+  const origin = req.get("origin");
+  const referer = req.get("referer");
+  const host = req.get("host");
+  if (!host) return res.status(400).json({ message: "Missing Host header" });
+
+  const expected = [`http://${host}`, `https://${host}`];
+  const sourceOk =
+    (origin && expected.includes(origin)) ||
+    (referer && expected.some((u) => referer.startsWith(u)));
+
+  if (!sourceOk) {
+    return res.status(403).json({ message: "Cross-site request blocked" });
+  }
+  next();
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

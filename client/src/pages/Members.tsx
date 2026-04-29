@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useMembers } from "@/context/MembersContext";
 import {
@@ -45,6 +45,7 @@ const ALL_VALUE = "__all__";
 export default function Members() {
   const { t, language, direction } = useLanguage();
   const { members, isLoading } = useMembers();
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [specialtyFilter, setSpecialtyFilter] = useState<string>(ALL_VALUE);
   const [typeFilter, setTypeFilter] = useState<string>(ALL_VALUE);
@@ -66,11 +67,11 @@ export default function Members() {
       if (typeFilter !== ALL_VALUE && m.membershipType !== typeFilter) return false;
       if (!q) return true;
       return (
-        m.fullName.toLowerCase().includes(q) ||
-        m.englishName.toLowerCase().includes(q) ||
+        (m.fullName ?? "").toLowerCase().includes(q) ||
+        (m.englishName ?? "").toLowerCase().includes(q) ||
         m.membershipNumber?.toString().includes(q) ||
-        m.phone.includes(q) ||
-        m.email.toLowerCase().includes(q) ||
+        (m.phone ?? "").includes(q) ||
+        (m.email ?? "").toLowerCase().includes(q) ||
         (m.city ?? "").toLowerCase().includes(q)
       );
     });
@@ -382,7 +383,7 @@ export default function Members() {
                     onClick={(e) => {
                       const target = e.target as HTMLElement;
                       if (target.closest("a, button")) return;
-                      window.location.href = `/member/${member.id}`;
+                      setLocation(`/member/${member.id}`);
                     }}
                     data-testid={`row-member-${member.id}`}
                   >
