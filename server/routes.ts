@@ -80,6 +80,21 @@ export async function registerRoutes(
     if (!parsed.success) return handleZodError(res, parsed.error);
     try {
       const updates: Record<string, unknown> = { ...parsed.data };
+
+      // Last-admin protection: refuse to demote the only remaining admin.
+      if (typeof updates.role === "string" && updates.role !== "admin") {
+        const target = await storage.getUser(paramId(req));
+        if (target?.role === "admin") {
+          const remaining = await storage.countOtherAdmins(target.id);
+          if (remaining === 0) {
+            return res.status(409).json({
+              message:
+                "لا يمكن تنزيل دور آخر مدير في النظام. أنشئ مديراً آخر أوّلاً ثم أعد المحاولة.",
+            });
+          }
+        }
+      }
+
       if (typeof updates.password === "string") {
         const bcrypt = await import("bcryptjs");
         updates.password = await bcrypt.default.hash(updates.password, 10);
@@ -95,12 +110,26 @@ export async function registerRoutes(
 
   app.delete("/api/users/:id", requireAdmin, async (req, res, next) => {
     try {
-      if (req.user?.id === paramId(req)) {
+      const targetId = paramId(req);
+      if (req.user?.id === targetId) {
         return res
           .status(400)
           .json({ message: "لا يمكنك حذف حسابك الخاص" });
       }
-      await storage.deleteUser(paramId(req));
+
+      // Last-admin protection: refuse to delete the only remaining admin.
+      const target = await storage.getUser(targetId);
+      if (target?.role === "admin") {
+        const remaining = await storage.countOtherAdmins(targetId);
+        if (remaining === 0) {
+          return res.status(409).json({
+            message:
+              "لا يمكن حذف آخر مدير في النظام. أنشئ مديراً آخر أوّلاً ثم أعد المحاولة.",
+          });
+        }
+      }
+
+      await storage.deleteUser(targetId);
       res.sendStatus(204);
     } catch (err) {
       next(err);
@@ -440,8 +469,19 @@ export async function registerRoutes(
   });
 
   // ---------- Member PDF ----------
-  // Now requires authentication. Uses puppeteer-core; requires Chromium to be
-  // available at CHROME_PATH (defaults to /usr/bin/chromium).
+  // Renders the member's report page using a headless Chromium and returns a PDF.
+  //
+  // Production notes (kept here so future maintainers don't repeat earlier mistakes):
+  //   • The browser fetches the page through the *local* Express server using
+  //     127.0.0.1 — never the public proxy domain. This keeps things fast,
+  //     avoids any reverse-proxy hops, and prevents auth round-tripping.
+  //   • We forward the user's session by injecting the raw `Cookie` header on
+  //     every browser request via `setExtraHTTPHeaders`, instead of fabricating
+  //     cookie objects bound to "localhost". The previous approach silently
+  //     failed behind any TLS/Domain-aware proxy.
+  //   • If Chromium is missing on the host (common in stripped-down deploys),
+  //     we surface a Bilingual 503 telling the user to use the Word export
+  //     instead — never a raw stack trace.
   app.get("/api/members/:id/pdf", requireAuth, async (req, res) => {
     let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
     try {
@@ -469,22 +509,9 @@ export async function registerRoutes(
 
       const page = await browser.newPage();
 
-      const cookies = (req.headers.cookie?.split(";") ?? [])
-        .map((c) => {
-          const [name, ...value] = c.trim().split("=");
-          if (!name) return null;
-          return {
-            name,
-            value: value.join("="),
-            domain: "localhost",
-            path: "/",
-            httpOnly: true,
-            secure: false,
-          };
-        })
-        .filter((c): c is NonNullable<typeof c> => c !== null);
-      if (cookies.length > 0) {
-        await page.setCookie(...cookies);
+      // Forward the caller's session cookie verbatim — works on any host/scheme.
+      if (req.headers.cookie) {
+        await page.setExtraHTTPHeaders({ Cookie: req.headers.cookie });
       }
 
       const fs = await import("fs");
@@ -500,8 +527,9 @@ export async function registerRoutes(
       const logoBase64Content = fs.readFileSync(logoPath, "utf8").trim();
       const logoBase64 = `data:image/jpeg;base64,${logoBase64Content}`;
 
+      // Always go through the loopback interface — bypasses any reverse proxy.
       const port = process.env.PORT || "5000";
-      const memberUrl = `http://localhost:${port}/member/${paramId(req)}?print=true`;
+      const memberUrl = `http://127.0.0.1:${port}/member/${paramId(req)}?print=true`;
 
       await page.goto(memberUrl, { waitUntil: "networkidle0" });
 
@@ -545,9 +573,25 @@ export async function registerRoutes(
       res.send(pdf);
     } catch (error: any) {
       console.error("PDF Generation Error:", error);
+      const msg = error?.message ?? String(error);
+      // Recognise the "Chromium is not installed" family of errors and turn
+      // them into a friendly 503 with an explicit fallback for the user.
+      const chromiumMissing =
+        /ENOENT|Failed to launch the browser process|spawn .* ENOENT|Could not find Chromium|Browser was not found|executablePath/i.test(
+          msg,
+        );
+      if (chromiumMissing) {
+        return res.status(503).json({
+          message:
+            "خاصيّة تصدير PDF غير متاحة على الخادم حالياً. يُرجى استخدام تصدير Word كبديل، أو الاتّصال بالمسؤول التقنيّ لتثبيت متصفّح Chromium.",
+          messageEn:
+            "PDF export is unavailable on this server. Please use the Word export instead, or contact the administrator to install Chromium.",
+        });
+      }
       res.status(500).json({
-        message: "Failed to generate PDF",
-        error: error?.message ?? String(error),
+        message: "تعذّر توليد ملفّ PDF. حاول لاحقاً أو استخدم تصدير Word.",
+        messageEn: "Failed to generate PDF",
+        error: msg,
       });
     } finally {
       if (browser) {

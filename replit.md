@@ -40,7 +40,8 @@ Preferred communication style: Simple, everyday language (Arabic).
 - `/api/members/:id/pdf` requires authentication (no public access).
 - Session cookie is `httpOnly`; `sameSite: "strict"` and `secure` in production, `sameSite: "lax"` in development.
 - `SESSION_SECRET` env var is required in production (warning in development).
-- Default admin user is auto-created on first boot with username `admin` and password from `ADMIN_INITIAL_PASSWORD` env var, or `"12345678"` as fallback. The user is flagged `mustChangePassword: true`, so the app forces a password change on the first successful login before allowing any other action.
+- Default admin user is auto-created on first boot with username `admin`. Password comes from `ADMIN_INITIAL_PASSWORD` (must be ≥ 8 chars) or, if absent, a cryptographically random 24-char password generated at boot via `crypto.randomBytes`. The generated password is printed **once** to stderr inside a bilingual highlighted box at startup so the operator can capture it. The user is flagged `mustChangePassword: true`, so the app forces a password change on the first successful login before allowing any other action.
+- **Last-admin protection**: The server refuses (HTTP 409) to delete or demote the last remaining admin (`role !== "admin"` PATCH or DELETE). The Settings UI also disables the destructive button on the last admin and on the current user, with an Arabic tooltip explaining why.
 - Login responses, `/api/user`, and user listings strip the `password` field.
 - Logging redacts any `password` field in API response bodies.
 - **HTTP headers**: Helmet middleware applied globally (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, etc.).
@@ -58,7 +59,7 @@ Preferred communication style: Simple, everyday language (Arabic).
 ## External Dependencies
 
 - **PostgreSQL** (required) via `DATABASE_URL`
-- **Chromium** (optional, for `/api/members/:id/pdf`) — path can be overridden via `CHROME_PATH` (default `/usr/bin/chromium`). Without Chromium installed, the PDF endpoint will return 500. The Word export works entirely client-side and has no extra runtime dependencies.
+- **Chromium** (optional, for `/api/members/:id/pdf`) — path can be overridden via `CHROME_PATH` (default `/usr/bin/chromium`). Without Chromium installed, the PDF endpoint returns **HTTP 503** with a bilingual (Arabic/English) JSON message instructing the user to use the Word export instead, or contact the administrator. The Word export works entirely client-side and has no extra runtime dependencies.
 - **Google Fonts**: Cairo (Arabic) and Inter (English) via CDN
 
 ## Required Environment Variables
@@ -67,7 +68,7 @@ Preferred communication style: Simple, everyday language (Arabic).
 |---|---|---|
 | `DATABASE_URL` | Always | PostgreSQL connection string |
 | `SESSION_SECRET` | Required in production, recommended in dev | Signs session cookies |
-| `ADMIN_INITIAL_PASSWORD` | Optional, first boot only | Initial password for the auto-created `admin` user. Defaults to `"12345678"`. The app forces a password change on first login regardless. |
+| `ADMIN_INITIAL_PASSWORD` | Optional, first boot only | Initial password for the auto-created `admin` user (must be ≥ 8 characters). If absent, a 24-character random password is generated and printed once to stderr at startup. The app forces a password change on first login regardless. |
 | `NODE_ENV` | Optional | `production` enables HTTPS-only cookies, strict same-site, and the same-origin CSRF guard |
 | `CHROME_PATH` | Optional | Custom Chromium path for PDF export |
 | `PORT` | Optional | Defaults to `5000` |

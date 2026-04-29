@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { GENDERS, MEMBERSHIP_TYPES, SPECIALTIES } from "@/lib/types";
+import { GENDERS, MEMBERSHIP_TYPES, SPECIALTIES, insertMemberSchema } from "@shared/schema";
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,24 +39,34 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-const memberSchema = z.object({
-  firstName: z.string().min(1, "الاسم الأول مطلوب"),
-  lastName: z.string().min(1, "الكنية مطلوبة"),
-  fullName: z.string().optional(),
-  fatherName: z.string().optional(),
-  englishName: z.string().optional(),
-  birthDate: z.string().optional(),
-  gender: z.enum(["male", "female"]).optional(),
-  specialty: z.string().optional(),
-  email: z.string().email("بريد إلكتروني غير صالح").optional().or(z.literal("")),
-  phone: z.string().optional(),
-  workAddress: z.string().optional(),
-  city: z.string().optional(),
-  joinDate: z.string().optional(),
-  membershipType: z.enum(["original", "associate"]).optional(),
-  escId: z.string().optional(),
-  membershipNumber: z.string().optional(),
-});
+// Form schema = the shared insert schema, with two adaptations needed by the
+// controlled UI:
+//   1. Optional text fields use `""` (not `null`) as their empty value, so
+//      react-hook-form stays happy with `<Input value=...>`.
+//   2. `membershipNumber` is a UI-only display string; it's stripped before
+//      submitting to the API.
+// Keeping the shape derived from `insertMemberSchema` ensures that any
+// future change to the shared model (e.g. a new required field) is enforced
+// here automatically — no more silent drift between client and server.
+const memberSchema = insertMemberSchema
+  .extend({
+    fullName: z.string().optional(),
+    fatherName: z.string().optional(),
+    englishName: z.string().optional(),
+    birthDate: z.string().optional(),
+    specialty: z.string().optional(),
+    email: z
+      .string()
+      .email("بريد إلكتروني غير صالح")
+      .optional()
+      .or(z.literal("")),
+    phone: z.string().optional(),
+    workAddress: z.string().optional(),
+    city: z.string().optional(),
+    joinDate: z.string().optional(),
+    escId: z.string().optional(),
+    membershipNumber: z.string().optional(),
+  });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
 
@@ -280,7 +290,7 @@ export default function AddMember() {
                 <FormField control={form.control} name="gender" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("field.gender")}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-gender">
                           <SelectValue placeholder={t("field.gender")} />
@@ -367,7 +377,7 @@ export default function AddMember() {
                 <FormField control={form.control} name="membershipType" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("field.membershipType")}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-membershipType">
                           <SelectValue placeholder={t("field.membershipType")} />

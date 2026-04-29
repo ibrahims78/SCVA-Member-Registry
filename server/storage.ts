@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
-import { eq, inArray } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import {
   members,
   subscriptions,
@@ -22,6 +23,13 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   updateUser(id: string, user: UpdateUser): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
+  /** Number of users currently holding the `admin` role. */
+  countAdmins(): Promise<number>;
+  /**
+   * Number of OTHER admins, i.e. admins whose id !== `excludingId`. Useful to
+   * answer the question "if I demote/delete this user, will any admin remain?"
+   */
+  countOtherAdmins(excludingId: string): Promise<number>;
 
   getMembers(): Promise<Member[]>;
   getMember(id: string): Promise<Member | undefined>;
@@ -54,22 +62,34 @@ export class DatabaseStorage implements IStorage {
       const adminExists = await this.getUserByUsername("admin");
       if (adminExists) return;
 
-      const defaultPassword =
-        process.env.ADMIN_INITIAL_PASSWORD || "12345678";
+      // Choose the initial password:
+      //   1. If ADMIN_INITIAL_PASSWORD is set and >= 8 chars  → use it (CI/CD).
+      //   2. Otherwise generate a strong random one and print it ONCE to stderr.
+      // We never fall back to a hard-coded literal, and we never persist the
+      // plaintext password anywhere except hashed in the database.
+      const envPassword = process.env.ADMIN_INITIAL_PASSWORD;
+      const isEnvPasswordValid =
+        typeof envPassword === "string" && envPassword.length >= 8;
 
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      const initialPassword = isEnvPasswordValid
+        ? envPassword
+        : generateRandomPassword(24);
+
+      const hashedPassword = await bcrypt.hash(initialPassword, 10);
       await db.insert(users).values({
         username: "admin",
         password: hashedPassword,
         role: "admin",
         mustChangePassword: true,
       });
-      // Use stderr for diagnostics so production log collectors pick it up
-      // alongside other startup messages, while not polluting stdout streams
-      // used by structured loggers.
-      console.error(
-        "[STORAGE] تم إنشاء مستخدم admin الافتراضي. سيُطلب تغيير كلمة المرور عند أول تسجيل دخول.",
-      );
+
+      if (isEnvPasswordValid) {
+        console.error(
+          "[STORAGE] تم إنشاء المستخدم admin من ADMIN_INITIAL_PASSWORD. سيُطلب تغيير كلمة المرور عند أول دخول.",
+        );
+      } else {
+        printInitialAdminCredentialsOnce(initialPassword);
+      }
     } catch (error) {
       console.error("[STORAGE] فشل في إنشاء مستخدم admin:", error);
     }
@@ -114,6 +134,22 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  async countAdmins(): Promise<number> {
+    const [row] = await db
+      .select({ value: count() })
+      .from(users)
+      .where(eq(users.role, "admin"));
+    return Number(row?.value ?? 0);
+  }
+
+  async countOtherAdmins(excludingId: string): Promise<number> {
+    const [row] = await db
+      .select({ value: count() })
+      .from(users)
+      .where(and(eq(users.role, "admin"), ne(users.id, excludingId)));
+    return Number(row?.value ?? 0);
   }
 
   async getMembers(): Promise<Member[]> {
@@ -220,3 +256,49 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// ---------------------------------------------------------------------------
+// Initial-admin password helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a cryptographically strong random password.
+ * Uses url-safe alphabet (no `+`, `/`, `=`, `0/O`, `1/l/I`) to make manual
+ * copying from terminal logs easier and avoid ambiguity.
+ */
+function generateRandomPassword(length = 24): string {
+  const alphabet =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
+  const bytes = randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += alphabet[bytes[i] % alphabet.length];
+  }
+  return out;
+}
+
+/**
+ * Print the freshly-generated admin credentials to stderr in a highly visible
+ * box. This runs ONLY when a new admin user is created during boot, so the
+ * password appears at most once per database lifetime. The plaintext password
+ * is never persisted, never logged again, and is dropped from process memory
+ * as soon as `initializeAdmin` returns.
+ */
+function printInitialAdminCredentialsOnce(plaintextPassword: string): void {
+  const lines = [
+    "",
+    "╔══════════════════════════════════════════════════════════════╗",
+    "║  SCVA — Initial admin credentials (shown only once)          ║",
+    "║  بيانات الدخول الأوليّة للمستخدم admin (تظهر مرّة واحدة فقط)    ║",
+    "╠══════════════════════════════════════════════════════════════╣",
+    `║  username: admin`.padEnd(63) + "║",
+    `║  password: ${plaintextPassword}`.padEnd(63) + "║",
+    "╠══════════════════════════════════════════════════════════════╣",
+    "║  • سيُطلب تغيير كلمة المرور فور تسجيل الدخول الأوّل.            ║",
+    "║  • انسخ الكلمة الآن — لن تُطبع مرّة أخرى.                       ║",
+    "║  • للأتمتة استخدم متغيّر البيئة ADMIN_INITIAL_PASSWORD.        ║",
+    "╚══════════════════════════════════════════════════════════════╝",
+    "",
+  ];
+  console.error(lines.join("\n"));
+}

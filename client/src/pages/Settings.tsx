@@ -88,6 +88,9 @@ export default function Settings() {
   const { data: users, isLoading } = useQuery<User[]>({ queryKey: ["/api/users"] });
   const { data: currentUser } = useQuery<User>({ queryKey: ["/api/user"] });
 
+  // Number of admins; used to disable destructive actions on the last admin.
+  const adminCount = (users ?? []).filter((u) => u.role === "admin").length;
+
   const onMutationError = (err: Error) => {
     toast({ title: "خطأ", description: err.message, variant: "destructive" });
   };
@@ -400,37 +403,57 @@ export default function Settings() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users?.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                        {user.role === "admin" ? "مدير" : "موظف"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(user)} className="h-8 w-8">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {user.username !== "admin" && (
+                {users?.map((user) => {
+                  const isSelf = currentUser?.id === user.id;
+                  const isLastAdmin =
+                    user.role === "admin" && adminCount <= 1;
+                  const cannotDelete = isSelf || isLastAdmin;
+                  const deleteTitle = isSelf
+                    ? "لا يمكنك حذف حسابك الخاصّ"
+                    : isLastAdmin
+                    ? "لا يمكن حذف آخر مدير في النظام"
+                    : "حذف المستخدم";
+                  return (
+                    <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                          {user.role === "admin" ? "مدير" : "موظف"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <div className="flex gap-1 justify-end">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => startEdit(user)}
+                            className="h-8 w-8"
+                            data-testid={`button-edit-user-${user.id}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={cannotDelete}
+                            title={deleteTitle}
+                            aria-label={deleteTitle}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-auto"
                             onClick={() => {
+                              if (cannotDelete) return;
                               if (confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
                                 deleteUserMutation.mutate(user.id);
                               }
                             }}
+                            data-testid={`button-delete-user-${user.id}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
