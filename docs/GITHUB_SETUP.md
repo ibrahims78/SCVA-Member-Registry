@@ -35,16 +35,6 @@ grep -rE "(token|secret|password|api[_-]?key)\s*[:=]\s*['\"]?[A-Za-z0-9]{20,}" \
   --exclude-dir=node_modules --exclude-dir=.git .
 ```
 
-### في هذا المشروع تحديداً
-ملف `docker-compose.yml` يحتوي **توكن Cloudflare Tunnel مكشوف**. قبل الدفع:
-
-```bash
-# 1) أبطل التوكن الحالي من لوحة Cloudflare Zero Trust
-# 2) عدّل docker-compose.yml ليصبح:
-#    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
-# 3) أضف CF_TUNNEL_TOKEN إلى .env (والذي ضمن .gitignore بالفعل)
-```
-
 ### تأكّد من `.gitignore`
 يجب أن يحتوي على:
 ```
@@ -162,7 +152,7 @@ git push -u origin main
 
 ### 4.4 Secret scanning
 - ✅ **Secret scanning**
-- ✅ **Push protection** — يمنع دفع توكنات بالخطأ (هذا كان سيمنع توكن Cloudflare!)
+- ✅ **Push protection** — يمنع دفع توكنات بالخطأ قبل وصولها للمستودع
 - ✅ **Validity checks** — يتحقّق إن كان السرّ المُكتشَف لا يزال صالحاً
 - ✅ **Non-provider patterns** — يكتشف أنماط أسرار عامّة (UUIDs، JWTs، ...)
 

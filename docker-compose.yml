@@ -46,16 +46,6 @@ services:
     networks:
       - scva_network
 
-  # خدمة نفق كلاود فلير (cloudflare_tunnel)
-  cloudflare_tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared_connector
-    restart: unless-stopped
-    # تم استخدام التوكن الخاص بك المستخرج من ملفاتك
-    command: tunnel --no-autoupdate run --token eyJhIjoiZmJkMGU1ZWRhZGQ2MDUxNDI1NGQzZGIzNjNlNDRlNjQiLCJ0IjoiNzAzNjhjZWUtNGM2OC00YjVmLWE5ODktMGFiNjcyMzVlODVmIiwicyI6Ik1ETXhOR0pqTmpVdE0yRm1PQzAwWVdJMUxXSmpNRFV0WldRME1EZG1OVE5tTVRjeSJ9
-    networks:
-      - scva_network
-
 networks:
   scva_network:
     driver: bridge

@@ -54,7 +54,7 @@ If you discover a security vulnerability, **please do not open a public GitHub i
 - ✅ الاعتمادات (dependencies) المباشرة.
 
 **خارج النطاق:**
-- ❌ ثغرات في خدمات سحابية تابعة لطرف ثالث (PostgreSQL، Cloudflare، ...) — أبلغ المزوّد مباشرة.
+- ❌ ثغرات في خدمات سحابية تابعة لطرف ثالث (PostgreSQL، استضافة، ...) — أبلغ المزوّد مباشرة.
 - ❌ هجمات الهندسة الاجتماعية على المستخدمين.
 - ❌ هجمات DoS التطوعية.
 
