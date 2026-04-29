@@ -2,7 +2,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import { type Server } from "http";
 import { z } from "zod";
 import puppeteer from "puppeteer-core";
-import { storage } from "./storage";
+import { storage, consumeInitialAdminPassword } from "./storage";
 import {
   changePasswordSchema,
   insertMemberSchema,
@@ -44,6 +44,20 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
+  // ---------- One-time reveal of the freshly generated admin password ----------
+  // On the very first boot of the application, the storage layer creates an
+  // `admin` user with a strong random password. This endpoint lets the login
+  // page surface that password ONCE so the operator does not have to dig
+  // through the server logs. After the first successful read the value is
+  // dropped from memory and a 404 is returned forever after.
+  app.get("/api/initial-credentials", (_req, res) => {
+    const password = consumeInitialAdminPassword();
+    if (!password) {
+      return res.status(404).json({ message: "Not available" });
+    }
+    res.json({ username: "admin", password });
+  });
+
   // ---------- Users (admin only) ----------
   app.get("/api/users", requireAdmin, async (_req, res, next) => {
     try {

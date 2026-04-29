@@ -89,6 +89,7 @@ export class DatabaseStorage implements IStorage {
         );
       } else {
         printInitialAdminCredentialsOnce(initialPassword);
+        stashInitialAdminPasswordForOneTimeReveal(initialPassword);
       }
     } catch (error) {
       console.error("[STORAGE] فشل في إنشاء مستخدم admin:", error);
@@ -284,6 +285,23 @@ function generateRandomPassword(length = 24): string {
  * is never persisted, never logged again, and is dropped from process memory
  * as soon as `initializeAdmin` returns.
  */
+let pendingInitialAdminPassword: string | null = null;
+
+function stashInitialAdminPasswordForOneTimeReveal(plaintext: string): void {
+  pendingInitialAdminPassword = plaintext;
+}
+
+/**
+ * Returns the freshly-generated initial admin password ONCE and clears it
+ * from memory. Subsequent calls return null. This is what powers the
+ * one-time reveal banner on the login page after first boot.
+ */
+export function consumeInitialAdminPassword(): string | null {
+  const value = pendingInitialAdminPassword;
+  pendingInitialAdminPassword = null;
+  return value;
+}
+
 function printInitialAdminCredentialsOnce(plaintextPassword: string): void {
   const lines = [
     "",

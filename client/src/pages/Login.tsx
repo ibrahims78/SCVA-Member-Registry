@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import {
   Languages,
   User as UserIcon,
   Lock,
+  KeyRound,
+  Copy,
+  Check,
+  X,
 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { BRAND } from "@/lib/brand";
@@ -26,11 +30,57 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [initialCreds, setInitialCreds] = useState<{ username: string; password: string } | null>(null);
+  const [credsDismissed, setCredsDismissed] = useState(false);
+  const [copiedField, setCopiedField] = useState<"username" | "password" | null>(null);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { language, setLanguage, direction } = useLanguage();
 
   const isAr = language === "ar";
+
+  // One-time fetch of the freshly-generated admin password on first boot.
+  // The server returns 404 once consumed; we silently ignore that case.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/initial-credentials", {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { username: string; password: string };
+        if (cancelled) return;
+        setInitialCreds(data);
+        setUsername(data.username);
+        setPassword(data.password);
+      } catch {
+        /* silent */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const copyToClipboard = async (
+    value: string,
+    field: "username" | "password",
+  ) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: isAr ? "تعذّر النسخ" : "Copy failed",
+        description: isAr
+          ? "انسخ القيمة يدوياً من الحقل."
+          : "Please copy the value manually.",
+      });
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +193,90 @@ export default function Login() {
                 : "Sign in to continue to your dashboard"}
             </p>
           </header>
+
+          {initialCreds && !credsDismissed && (
+            <div
+              role="status"
+              className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3 shadow-sm"
+              data-testid="banner-initial-credentials"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex-shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+                    <KeyRound className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {isAr
+                        ? "بيانات الدخول الأوليّة للمسؤول"
+                        : "Initial admin credentials"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isAr
+                        ? "تظهر مرّة واحدة فقط. انسخها قبل الإغلاق."
+                        : "Shown only once. Please copy before closing."}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCredsDismissed(true)}
+                  className="flex-shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label={isAr ? "إخفاء" : "Dismiss"}
+                  data-testid="button-dismiss-credentials"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+
+              <dl className="space-y-2 text-sm">
+                {(["username", "password"] as const).map((field) => (
+                  <div
+                    key={field}
+                    className="flex items-center justify-between gap-2 rounded-md bg-background border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {field === "username"
+                          ? isAr ? "اسم المستخدم" : "Username"
+                          : isAr ? "كلمة المرور" : "Password"}
+                      </dt>
+                      <dd
+                        className="font-mono text-sm text-foreground truncate"
+                        data-testid={`text-initial-${field}`}
+                        dir="ltr"
+                      >
+                        {initialCreds[field]}
+                      </dd>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(initialCreds[field], field)}
+                      className="flex-shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      aria-label={
+                        isAr
+                          ? `نسخ ${field === "username" ? "اسم المستخدم" : "كلمة المرور"}`
+                          : `Copy ${field}`
+                      }
+                      data-testid={`button-copy-${field}`}
+                    >
+                      {copiedField === field ? (
+                        <Check className="h-4 w-4 text-primary" aria-hidden="true" />
+                      ) : (
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </dl>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {isAr
+                  ? "سيُطلب منك تغيير كلمة المرور فور تسجيل الدخول لأوّل مرّة."
+                  : "You will be required to change this password right after your first sign-in."}
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
             <div className="space-y-1.5">
