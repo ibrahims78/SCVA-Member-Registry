@@ -530,16 +530,25 @@ export async function registerRoutes(
 
       const fs = await import("fs");
       const path = await import("path");
-      const { fileURLToPath } = await import("url");
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
 
-      const logoPath = path.join(
-        __dirname,
-        "../client/src/assets/logo.base64.txt",
+      // Resolve the logo from the project root. Using `process.cwd()` works
+      // in both dev (tsx) and production (bundled CJS, where `import.meta.url`
+      // is undefined). If the file is missing, fall back to a logo-less header
+      // instead of crashing the whole PDF request.
+      const logoPath = path.resolve(
+        process.cwd(),
+        "client/src/assets/logo.base64.txt",
       );
-      const logoBase64Content = fs.readFileSync(logoPath, "utf8").trim();
-      const logoBase64 = `data:image/jpeg;base64,${logoBase64Content}`;
+      let logoBase64 = "";
+      try {
+        const logoBase64Content = fs.readFileSync(logoPath, "utf8").trim();
+        logoBase64 = `data:image/jpeg;base64,${logoBase64Content}`;
+      } catch (logoErr) {
+        console.warn(
+          "[PDF] logo file not found, generating PDF without it:",
+          (logoErr as Error)?.message,
+        );
+      }
 
       // Always go through the loopback interface — bypasses any reverse proxy.
       const port = process.env.PORT || "5000";
