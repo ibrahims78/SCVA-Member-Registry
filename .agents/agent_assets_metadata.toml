@@ -36,3 +36,21 @@ id = "JIfhR-QWPjSYNpzouqkEi"
 uri = "file://اشتراكات_للمراجعة.xlsx"
 type = "table"
 title = "اشتراكات_للمراجعة.xlsx — 931 اشتراكاً، 8 أعمدة (مع عمود ملاحظات)"
+
+[[outputs]]
+id = "uZYgDq5TeuDy7edKbr3Jk"
+uri = "file://ملفات_للتحميل/تعليمات_التعديل.txt"
+type = "text"
+title = "تعليمات_التعديل.txt"
+
+[[outputs]]
+id = "ClOx0mZwa_y2b2FTbeFAm"
+uri = "file://ملفات_للتحميل/أعضاء_للمراجعة.xlsx"
+type = "table"
+title = "أعضاء_للمراجعة.xlsx (544 عضواً)"
+
+[[outputs]]
+id = "C5ijvpWtOuXqcjf2BE-fY"
+uri = "file://ملفات_للتحميل/اشتراكات_للمراجعة.xlsx"
+type = "table"
+title = "اشتراكات_للمراجعة.xlsx (931 اشتراكاً)"
