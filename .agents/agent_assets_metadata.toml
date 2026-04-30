@@ -18,3 +18,21 @@ id = "9EGyacBAB6W83c9ZxfvxS"
 uri = "file://اشتراكات-تجريبية-SCVA.xlsx"
 type = "table"
 title = "190 اشتراك تجريبي (2020–2024)"
+
+[[outputs]]
+id = "4aLIovVxdQP6YlQJ1vVIn"
+uri = "file://تعليمات_التعديل.txt"
+type = "text"
+title = "تعليمات_التعديل.txt — دليل المراجعة الكامل (5 أقسام، 353 سطراً)"
+
+[[outputs]]
+id = "RuTxTdUNoBF4MEvwCjfJo"
+uri = "file://أعضاء_للمراجعة.xlsx"
+type = "table"
+title = "أعضاء_للمراجعة.xlsx — 544 عضواً، 17 عموداً (مع عمود ملاحظات)"
+
+[[outputs]]
+id = "JIfhR-QWPjSYNpzouqkEi"
+uri = "file://اشتراكات_للمراجعة.xlsx"
+type = "table"
+title = "اشتراكات_للمراجعة.xlsx — 931 اشتراكاً، 8 أعمدة (مع عمود ملاحظات)"
