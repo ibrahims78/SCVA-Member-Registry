@@ -46,36 +46,65 @@ function buildUserSchema(isAr: boolean) {
 }
 type UserFormValues = z.infer<ReturnType<typeof buildUserSchema>>;
 
-// NOTE: Arabic labels here are used as Excel column headers for both downloading
-// the template AND matching uploaded files. They MUST stay Arabic so the
-// import parser can correctly identify columns regardless of UI language.
-const IMPORT_COLUMNS = [
-  { key: "firstName",     label: "الاسم الأول *",          example: "محمد" },
-  { key: "lastName",      label: "الكنية *",               example: "الأحمد" },
-  { key: "fullName",      label: "الاسم بالعربية",         example: "محمد علي الأحمد" },
-  { key: "fatherName",    label: "اسم الأب",               example: "علي" },
-  { key: "englishName",   label: "الاسم بالإنجليزية",      example: "Mohammad Al-Ahmad" },
-  { key: "birthDate",     label: "تاريخ الميلاد",          example: "1985-06-15" },
-  { key: "gender",        label: "الجنس",                  example: "male" },
-  { key: "specialty",     label: "التخصص",                 example: "cardiology" },
-  { key: "email",         label: "البريد الإلكتروني",      example: "example@email.com" },
-  { key: "phone",         label: "رقم الهاتف",             example: "0911234567" },
-  { key: "city",          label: "المدينة",                example: "دمشق" },
-  { key: "workAddress",   label: "عنوان العمل",            example: "مستشفى المجتهد" },
-  { key: "joinDate",      label: "تاريخ الانضمام",         example: "2020-01-01" },
-  { key: "membershipType",label: "نوع العضوية",            example: "original" },
-  { key: "escId",         label: "معرّف الجمعية الأوروبية",example: "" },
+// Each column carries both Arabic and English labels. The downloaded template
+// uses the label that matches the current UI language so users can prepare
+// the file in whichever language they prefer. The import parser accepts EITHER
+// label, which keeps backward compatibility with files prepared earlier
+// (when the template was Arabic-only) and lets a user import a file that was
+// authored in a different language than the current UI.
+interface ImportColumn {
+  key: string;
+  labelAr: string;
+  labelEn: string;
+  exampleAr: string;
+  exampleEn: string;
+}
+
+const IMPORT_COLUMNS: ImportColumn[] = [
+  { key: "firstName",      labelAr: "الاسم الأول *",          labelEn: "First name *",            exampleAr: "محمد",                exampleEn: "Mohammad" },
+  { key: "lastName",       labelAr: "الكنية *",               labelEn: "Last name *",             exampleAr: "الأحمد",              exampleEn: "Al-Ahmad" },
+  { key: "fullName",       labelAr: "الاسم بالعربية",         labelEn: "Full name (Arabic)",      exampleAr: "محمد علي الأحمد",     exampleEn: "محمد علي الأحمد" },
+  { key: "fatherName",     labelAr: "اسم الأب",               labelEn: "Father's name",           exampleAr: "علي",                 exampleEn: "Ali" },
+  { key: "englishName",    labelAr: "الاسم بالإنجليزية",      labelEn: "Full name (English)",     exampleAr: "Mohammad Al-Ahmad",   exampleEn: "Mohammad Al-Ahmad" },
+  { key: "birthDate",      labelAr: "تاريخ الميلاد",          labelEn: "Date of birth",           exampleAr: "1985-06-15",          exampleEn: "1985-06-15" },
+  { key: "gender",         labelAr: "الجنس",                  labelEn: "Gender",                  exampleAr: "male",                exampleEn: "male" },
+  { key: "specialty",      labelAr: "التخصص",                 labelEn: "Specialty",               exampleAr: "cardiology",          exampleEn: "cardiology" },
+  { key: "email",          labelAr: "البريد الإلكتروني",      labelEn: "Email",                   exampleAr: "example@email.com",   exampleEn: "example@email.com" },
+  { key: "phone",          labelAr: "رقم الهاتف",             labelEn: "Phone",                   exampleAr: "0911234567",          exampleEn: "0911234567" },
+  { key: "city",           labelAr: "المدينة",                labelEn: "City",                    exampleAr: "دمشق",                exampleEn: "Damascus" },
+  { key: "workAddress",    labelAr: "عنوان العمل",            labelEn: "Work address",            exampleAr: "مستشفى المجتهد",      exampleEn: "Al-Mojtahed Hospital" },
+  { key: "joinDate",       labelAr: "تاريخ الانضمام",         labelEn: "Join date",               exampleAr: "2020-01-01",          exampleEn: "2020-01-01" },
+  { key: "membershipType", labelAr: "نوع العضوية",            labelEn: "Membership type",         exampleAr: "original",            exampleEn: "original" },
+  { key: "escId",          labelAr: "معرّف الجمعية الأوروبية",labelEn: "ESC ID",                  exampleAr: "",                    exampleEn: "" },
 ];
 
-const SUB_IMPORT_COLUMNS = [
-  { key: "membershipNumber", label: "رقم العضوية",    example: "1" },
-  { key: "firstName",        label: "الاسم الأول",    example: "محمد" },
-  { key: "lastName",         label: "الكنية",         example: "الأحمد" },
-  { key: "year",             label: "سنة الاشتراك *", example: "2024" },
-  { key: "amount",           label: "المبلغ (ل.س) *", example: "50000" },
-  { key: "date",             label: "تاريخ الدفع *",  example: "2024-03-15" },
-  { key: "notes",            label: "ملاحظات",        example: "دُفع نقداً" },
+const SUB_IMPORT_COLUMNS: ImportColumn[] = [
+  { key: "membershipNumber", labelAr: "رقم العضوية",    labelEn: "Membership number",  exampleAr: "1",          exampleEn: "1" },
+  { key: "firstName",        labelAr: "الاسم الأول",    labelEn: "First name",         exampleAr: "محمد",       exampleEn: "Mohammad" },
+  { key: "lastName",         labelAr: "الكنية",         labelEn: "Last name",          exampleAr: "الأحمد",     exampleEn: "Al-Ahmad" },
+  { key: "year",             labelAr: "سنة الاشتراك *", labelEn: "Subscription year *",exampleAr: "2024",       exampleEn: "2024" },
+  { key: "amount",           labelAr: "المبلغ (ل.س) *", labelEn: "Amount (SYP) *",     exampleAr: "50000",      exampleEn: "50000" },
+  { key: "date",             labelAr: "تاريخ الدفع *",  labelEn: "Payment date *",     exampleAr: "2024-03-15", exampleEn: "2024-03-15" },
+  { key: "notes",            labelAr: "ملاحظات",        labelEn: "Notes",              exampleAr: "دُفع نقداً", exampleEn: "Paid in cash" },
 ];
+
+// Build a header -> column key lookup that accepts BOTH the Arabic and English
+// labels (trimmed, case-insensitive). This is what makes a file prepared in
+// one language importable while the UI is set to the other.
+function buildHeaderIndex(
+  headerRow: unknown[],
+  columns: ImportColumn[],
+): Record<string, number> {
+  const normalize = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const headers = headerRow.map(normalize);
+  const map: Record<string, number> = {};
+  for (const col of columns) {
+    const candidates = [normalize(col.labelAr), normalize(col.labelEn)];
+    const idx = headers.findIndex((h) => candidates.includes(h));
+    if (idx !== -1) map[col.key] = idx;
+  }
+  return map;
+}
 
 interface ImportResult {
   success: number;
@@ -283,24 +312,29 @@ export default function Settings() {
 
   // ---- Excel template download ----
   const downloadTemplate = () => {
-    const headers = IMPORT_COLUMNS.map((c) => c.label);
-    const example = IMPORT_COLUMNS.map((c) => c.example);
-    const notes = IMPORT_COLUMNS.map((c) =>
-      c.key === "gender"
-        ? "القيم: male أو female"
-        : c.key === "membershipType"
-        ? "القيم: original أو associate"
-        : c.key === "specialty"
-        ? "القيم: cardiology أو cardiac_surgery"
-        : c.key === "birthDate" || c.key === "joinDate"
-        ? "الصيغة: YYYY-MM-DD"
-        : ""
-    );
+    const headers = IMPORT_COLUMNS.map((c) => (isAr ? c.labelAr : c.labelEn));
+    const example = IMPORT_COLUMNS.map((c) => (isAr ? c.exampleAr : c.exampleEn));
+    const notes = IMPORT_COLUMNS.map((c) => {
+      if (c.key === "gender")
+        return isAr ? "القيم: male أو female" : "Values: male or female";
+      if (c.key === "membershipType")
+        return isAr ? "القيم: original أو associate" : "Values: original or associate";
+      if (c.key === "specialty")
+        return isAr
+          ? "القيم: cardiology أو cardiac_surgery"
+          : "Values: cardiology or cardiac_surgery";
+      if (c.key === "birthDate" || c.key === "joinDate")
+        return isAr ? "الصيغة: YYYY-MM-DD" : "Format: YYYY-MM-DD";
+      return "";
+    });
     const ws = XLSX.utils.aoa_to_sheet([headers, example, notes]);
     ws["!cols"] = headers.map(() => ({ wch: 22 }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "نموذج الاستيراد");
-    XLSX.writeFile(wb, "نموذج-استيراد-الاعضاء.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, isAr ? "نموذج الاستيراد" : "Import template");
+    XLSX.writeFile(
+      wb,
+      isAr ? "نموذج-استيراد-الاعضاء.xlsx" : "members-import-template.xlsx",
+    );
     toast({ title: L.tplDl, description: L.tplDlD });
   };
 
@@ -325,11 +359,8 @@ export default function Settings() {
       const headerRow = rawRows[0] as string[];
       const dataRows = rawRows.slice(1).filter((r) => r.some((c) => c !== undefined && c !== ""));
 
-      const colIndexMap: Record<string, number> = {};
-      IMPORT_COLUMNS.forEach((col) => {
-        const idx = headerRow.findIndex((h) => h === col.label);
-        if (idx !== -1) colIndexMap[col.key] = idx;
-      });
+      // Accept either Arabic or English headers, regardless of current UI language.
+      const colIndexMap = buildHeaderIndex(headerRow, IMPORT_COLUMNS);
 
       const members = dataRows.map((row) => {
         const obj: Record<string, string> = {};
@@ -369,26 +400,35 @@ export default function Settings() {
 
   // ---- Subscriptions template download ----
   const downloadSubTemplate = () => {
-    const headers = SUB_IMPORT_COLUMNS.map((c) => c.label);
-    const example = SUB_IMPORT_COLUMNS.map((c) => c.example);
-    const notes = SUB_IMPORT_COLUMNS.map((c) =>
-      c.key === "year"
-        ? "رقم السنة الميلادية مثل 2024"
-        : c.key === "amount"
-        ? "رقم صحيح بالليرة السورية"
-        : c.key === "date"
-        ? "الصيغة: YYYY-MM-DD"
-        : c.key === "membershipNumber"
-        ? "مُفضَّل للمطابقة الدقيقة"
-        : c.key === "firstName" || c.key === "lastName"
-        ? "بديل عند غياب رقم العضوية"
-        : ""
-    );
+    const headers = SUB_IMPORT_COLUMNS.map((c) => (isAr ? c.labelAr : c.labelEn));
+    const example = SUB_IMPORT_COLUMNS.map((c) => (isAr ? c.exampleAr : c.exampleEn));
+    const notes = SUB_IMPORT_COLUMNS.map((c) => {
+      if (c.key === "year")
+        return isAr ? "رقم السنة الميلادية مثل 2024" : "Gregorian year, e.g. 2024";
+      if (c.key === "amount")
+        return isAr ? "رقم صحيح بالليرة السورية" : "Integer in Syrian Pounds";
+      if (c.key === "date")
+        return isAr ? "الصيغة: YYYY-MM-DD" : "Format: YYYY-MM-DD";
+      if (c.key === "membershipNumber")
+        return isAr ? "مُفضَّل للمطابقة الدقيقة" : "Preferred for exact matching";
+      if (c.key === "firstName" || c.key === "lastName")
+        return isAr
+          ? "بديل عند غياب رقم العضوية"
+          : "Used as fallback if membership number is missing";
+      return "";
+    });
     const ws = XLSX.utils.aoa_to_sheet([headers, example, notes]);
     ws["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "نموذج الاشتراكات");
-    XLSX.writeFile(wb, "نموذج-استيراد-الاشتراكات.xlsx");
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      isAr ? "نموذج الاشتراكات" : "Subscriptions template",
+    );
+    XLSX.writeFile(
+      wb,
+      isAr ? "نموذج-استيراد-الاشتراكات.xlsx" : "subscriptions-import-template.xlsx",
+    );
     toast({ title: L.subTplDl });
   };
 
@@ -413,11 +453,8 @@ export default function Settings() {
       const headerRow = rawRows[0] as string[];
       const dataRows = rawRows.slice(1).filter((r) => r.some((c) => c !== undefined && c !== ""));
 
-      const colIndexMap: Record<string, number> = {};
-      SUB_IMPORT_COLUMNS.forEach((col) => {
-        const idx = headerRow.findIndex((h) => String(h).trim() === col.label);
-        if (idx !== -1) colIndexMap[col.key] = idx;
-      });
+      // Accept either Arabic or English headers, regardless of current UI language.
+      const colIndexMap = buildHeaderIndex(headerRow, SUB_IMPORT_COLUMNS);
 
       const rows = dataRows.map((row) => {
         const obj: Record<string, any> = {};
