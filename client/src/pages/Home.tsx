@@ -20,7 +20,6 @@ import {
   UserPlus,
   Stethoscope,
   Wallet,
-  TrendingUp,
   ArrowRight,
   ArrowLeft,
   CalendarDays,
@@ -135,28 +134,11 @@ export default function Home() {
       return acc;
     }, {});
 
-    const totalRevenue = members.reduce(
-      (sum, m) => sum + m.subscriptions.reduce((s, sub) => s + sub.amount, 0),
-      0,
-    );
-
-    const currentYear = new Date().getFullYear();
-    const currentYearRevenue = members.reduce(
-      (sum, m) =>
-        sum +
-        m.subscriptions
-          .filter((s) => s.year === currentYear)
-          .reduce((s, sub) => s + sub.amount, 0),
-      0,
-    );
-
     return {
       totalMembers,
       totalOriginal,
       totalAssociate,
       specialtyStats,
-      totalRevenue,
-      currentYearRevenue,
     };
   }, [members]);
 
@@ -191,9 +173,6 @@ export default function Home() {
     day: "numeric",
   });
 
-  const formatCurrency = (n: number) =>
-    n.toLocaleString(isAr ? "ar-SY" : "en-US") + " " + (isAr ? "ل.س" : "SYP");
-
   return (
     <div className="space-y-8">
       {/* ===== Welcome header ===== */}
@@ -225,7 +204,7 @@ export default function Home() {
 
       {/* ===== Stat cards ===== */}
       <section
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2"
         aria-label={isAr ? "إحصاءات سريعة" : "Quick stats"}
       >
         <StatCard
@@ -253,24 +232,6 @@ export default function Home() {
           tone="info"
           isLoading={loading}
           testId="stat-original"
-        />
-        <StatCard
-          title={isAr ? "إيرادات السنة الحالية" : "This year's revenue"}
-          value={loading ? "" : formatCurrency(stats.currentYearRevenue)}
-          icon={TrendingUp}
-          description={isAr ? "اشتراكات هذا العام" : "Current year subscriptions"}
-          tone="success"
-          isLoading={loading}
-          testId="stat-revenue-year"
-        />
-        <StatCard
-          title={isAr ? "إجمالي الإيرادات" : "Total revenue"}
-          value={loading ? "" : formatCurrency(stats.totalRevenue)}
-          icon={Wallet}
-          description={isAr ? "كلّ الاشتراكات منذ البداية" : "All subscriptions"}
-          tone="warning"
-          isLoading={loading}
-          testId="stat-revenue-total"
         />
       </section>
 

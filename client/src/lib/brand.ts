@@ -7,7 +7,7 @@ export const BRAND = {
   /** Short, used in tight spaces (sidebar header, breadcrumbs). */
   shortName: "SCVA",
   /** Full Arabic name. */
-  fullNameAr: "الجمعية السورية لجراحة وأمراض القلب والشرايين",
+  fullNameAr: "الرابطة السورية لأمراض وجراحة القلب",
   /** Full English name. */
   fullNameEn: "Syrian Cardiovascular Association",
   /** App title — what users call this product. */

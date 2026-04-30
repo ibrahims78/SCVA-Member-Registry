@@ -1,6 +1,6 @@
 <div align="center">
 
-# نظام إدارة الأعضاء — الجمعية السورية لجراحة وأمراض القلب والشرايين
+# نظام إدارة الأعضاء — الرابطة السورية لأمراض وجراحة القلب
 ### SCVA Members Management System
 
 نظام احترافي ثنائي اللغة (عربي / إنجليزي) لإدارة قاعدة بيانات أعضاء جمعية طبية، يدعم سجلّ الاشتراكات السنوية، تصدير التقارير، وإدارة الصلاحيات.
@@ -278,7 +278,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 <div align="center">
 
-صُنع بعناية للجمعية السورية لجراحة وأمراض القلب والشرايين 🫀<br>
+صُنع بعناية للرابطة السورية لأمراض وجراحة القلب 🫀<br>
 Built with care for the Syrian Cardiovascular Association
 
 </div>
