@@ -81,7 +81,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const LANG_STORAGE_KEY = 'scva.lang';
 
 function readInitialLanguage(): Language {
-  if (typeof window === 'undefined') return 'ar';
+  if (typeof window === 'undefined') return 'en';
   try {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('lang');
@@ -91,7 +91,7 @@ function readInitialLanguage(): Language {
   } catch {
     /* ignore */
   }
-  return 'ar';
+  return 'en';
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
