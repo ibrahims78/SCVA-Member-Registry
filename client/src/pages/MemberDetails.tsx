@@ -397,39 +397,45 @@ export default function MemberDetails() {
         </div>
       </div>
 
-      {/* ===== Hero ===== */}
+      {/* ===== Hero =====
+          The brand gradient is always dark (in both light & dark modes), so
+          all text/overlay tints are locked to white — never use
+          `text-primary-foreground` here, which resolves to near-black in dark mode. */}
       <Card className="overflow-hidden print:shadow-none print:border-2">
-        <div className="bg-brand-gradient text-primary-foreground px-6 py-8 print:bg-none print:text-black print:py-4 relative">
+        <div className="bg-brand-gradient text-white px-6 py-8 print:bg-none print:text-black print:py-4 relative shadow-inner">
           <div className="absolute inset-0 bg-grid-soft opacity-10 print:hidden" />
           <div className="relative z-10 flex flex-col items-center text-center gap-3">
             <Badge
               variant="secondary"
-              className="bg-primary-foreground/15 text-primary-foreground border-0 px-3 py-0.5 backdrop-blur-sm print:bg-white print:text-black print:border-2 print:border-black"
+              className="bg-white/20 text-white border border-white/25 px-3 py-0.5 backdrop-blur-sm shadow-sm print:bg-white print:text-black print:border-2 print:border-black"
             >
               {t(`val.${member.membershipType}`)}
             </Badge>
             <h1
-              className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight print:text-2xl"
+              className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] print:text-black print:drop-shadow-none print:text-2xl"
               data-testid="text-member-name"
             >
               {member.fullName}
             </h1>
-            <p className="text-base text-primary-foreground/85 font-medium print:text-gray-700" dir="ltr">
+            <p
+              className="text-base text-white/90 font-medium drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)] print:text-gray-700 print:drop-shadow-none"
+              dir="ltr"
+            >
               {member.englishName}
             </p>
             <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs">
               {member.membershipNumber && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-foreground/15 backdrop-blur-sm print:bg-white print:text-black">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white border border-white/20 backdrop-blur-sm print:bg-white print:text-black print:border-black">
                   <Hash className="h-3 w-3" />
                   {isAr ? "رقم العضوية" : "Membership #"} {member.membershipNumber}
                 </span>
               )}
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-foreground/15 backdrop-blur-sm print:bg-white print:text-black">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white border border-white/20 backdrop-blur-sm print:bg-white print:text-black print:border-black">
                 <Calendar className="h-3 w-3" />
                 {member.joinDate}
               </span>
               {member.city && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-foreground/15 backdrop-blur-sm print:bg-white print:text-black">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white border border-white/20 backdrop-blur-sm print:bg-white print:text-black print:border-black">
                   <Building2 className="h-3 w-3" />
                   {member.city}
                 </span>
