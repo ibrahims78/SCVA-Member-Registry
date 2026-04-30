@@ -34,7 +34,7 @@ const translations: Record<string, Record<Language, string>> = {
   'field.escId': { ar: 'ESC ID', en: 'ESC ID' },
   'field.membershipNumber': { ar: 'رقم العضوية', en: 'Membership Number' },
   'field.city': { ar: 'المحافظة', en: 'City' },
-  'field.fullName': { ar: 'الاسم الكامل', en: 'Full Name' },
+  'field.fullName': { ar: 'الاسم بالعربية', en: 'Arabic Name' },
   'field.fatherName': { ar: 'اسم الوالد', en: 'Father\'s Name' },
   'field.englishName': { ar: 'الاسم بالإنكليزية', en: 'English Name' },
   'field.birthDate': { ar: 'تاريخ الميلاد', en: 'Date of Birth' },

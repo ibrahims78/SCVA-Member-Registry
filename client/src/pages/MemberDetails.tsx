@@ -268,7 +268,7 @@ export default function MemberDetails() {
           new DocxTable({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              ["الاسم الكامل", "Full Name", member.fullName],
+              ["الاسم بالعربية", "Arabic Name", member.fullName],
               ["الاسم بالانجليزية", "English Name", member.englishName],
               ["اسم الأب", "Father Name", member.fatherName],
               ["تاريخ الميلاد", "Birth Date", member.birthDate],

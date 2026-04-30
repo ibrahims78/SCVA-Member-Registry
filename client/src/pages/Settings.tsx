@@ -37,7 +37,7 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 const IMPORT_COLUMNS = [
   { key: "firstName",     label: "الاسم الأول *",          example: "محمد" },
   { key: "lastName",      label: "الكنية *",               example: "الأحمد" },
-  { key: "fullName",      label: "الاسم الكامل",           example: "محمد علي الأحمد" },
+  { key: "fullName",      label: "الاسم بالعربية",         example: "محمد علي الأحمد" },
   { key: "fatherName",    label: "اسم الأب",               example: "علي" },
   { key: "englishName",   label: "الاسم بالإنجليزية",      example: "Mohammad Al-Ahmad" },
   { key: "birthDate",     label: "تاريخ الميلاد",          example: "1985-06-15" },
