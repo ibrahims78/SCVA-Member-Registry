@@ -54,3 +54,15 @@ id = "C5ijvpWtOuXqcjf2BE-fY"
 uri = "file://ملفات_للتحميل/اشتراكات_للمراجعة.xlsx"
 type = "table"
 title = "اشتراكات_للمراجعة.xlsx (931 اشتراكاً)"
+
+[[outputs]]
+id = "TBKgAc2QnMFnjHTYST-cU"
+uri = "file://ملفات_للتحميل/test_members_150_EN.xlsx"
+type = "table"
+title = "test_members_150_EN.xlsx — 150 عضواً تجريبيًا"
+
+[[outputs]]
+id = "rlvuzI-Ez0hADIWSgzMlr"
+uri = "file://ملفات_للتحميل/test_subscriptions_EN.xlsx"
+type = "table"
+title = "test_subscriptions_EN.xlsx — 340 اشتراكاً تجريبيًا"
