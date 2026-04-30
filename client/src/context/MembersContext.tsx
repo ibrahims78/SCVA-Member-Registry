@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/context/LanguageContext";
 import type {
   InsertMember,
   InsertSubscription,
@@ -29,6 +30,23 @@ const MembersContext = createContext<MembersContextType | undefined>(undefined);
 export function MembersProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
+
+  const M = {
+    addOk: isAr ? "تمت إضافة العضو بنجاح" : "Member added successfully",
+    addErr: isAr ? "خطأ في إضافة العضو" : "Failed to add member",
+    updOk: isAr ? "تم تحديث بيانات العضو" : "Member updated",
+    updErr: isAr ? "خطأ في تحديث العضو" : "Failed to update member",
+    delOk: isAr ? "تم حذف العضو" : "Member deleted",
+    delErr: isAr ? "خطأ في حذف العضو" : "Failed to delete member",
+    subAddOk: isAr ? "تم تسجيل الاشتراك بنجاح" : "Payment recorded",
+    subAddErr: isAr ? "خطأ في تسجيل الاشتراك" : "Failed to record payment",
+    subUpdOk: isAr ? "تم تحديث الاشتراك بنجاح" : "Payment updated",
+    subUpdErr: isAr ? "خطأ في تحديث الاشتراك" : "Failed to update payment",
+    subDelOk: isAr ? "تم حذف الاشتراك" : "Payment deleted",
+    subDelErr: isAr ? "خطأ في حذف الاشتراك" : "Failed to delete payment",
+  };
 
   const { data: members = [], isLoading } = useQuery<MemberWithSubscriptions[]>(
     {
@@ -46,11 +64,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تمت إضافة العضو بنجاح" });
+      toast({ title: M.addOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في إضافة العضو",
+        title: M.addErr,
         description: error?.message ?? "",
         variant: "destructive",
       });
@@ -70,11 +88,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تم تحديث بيانات العضو" });
+      toast({ title: M.updOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في تحديث العضو",
+        title: M.updErr,
         description: error?.message ?? "",
         variant: "destructive",
       });
@@ -87,11 +105,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تم حذف العضو" });
+      toast({ title: M.delOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في حذف العضو",
+        title: M.delErr,
         description: error?.message ?? "",
         variant: "destructive",
       });
@@ -115,11 +133,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تم تسجيل الاشتراك بنجاح" });
+      toast({ title: M.subAddOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في تسجيل الاشتراك",
+        title: M.subAddErr,
         description: error?.message ?? "",
         variant: "destructive",
       });
@@ -143,11 +161,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تم تحديث الاشتراك بنجاح" });
+      toast({ title: M.subUpdOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في تحديث الاشتراك",
+        title: M.subUpdErr,
         description: error?.message ?? "",
         variant: "destructive",
       });
@@ -160,11 +178,11 @@ export function MembersProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "تم حذف الاشتراك" });
+      toast({ title: M.subDelOk });
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ في حذف الاشتراك",
+        title: M.subDelErr,
         description: error?.message ?? "",
         variant: "destructive",
       });

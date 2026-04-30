@@ -11,6 +11,7 @@ import {
   updateMemberSchema,
   updateUserSchema,
 } from "@shared/schema";
+import { t, getLang } from "./i18n";
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
@@ -34,10 +35,10 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function handleZodError(res: Response, error: z.ZodError) {
+function handleZodError(req: Request, res: Response, error: z.ZodError) {
   return res
     .status(400)
-    .json({ message: "بيانات غير صالحة", errors: error.flatten().fieldErrors });
+    .json({ message: t(req, "invalidData"), errors: error.flatten().fieldErrors });
 }
 
 export async function registerRoutes(
@@ -70,7 +71,7 @@ export async function registerRoutes(
 
   app.post("/api/users", requireAdmin, async (req, res, next) => {
     const parsed = insertUserSchema.safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const bcrypt = await import("bcryptjs");
       const hashedPassword = await bcrypt.default.hash(parsed.data.password, 10);
@@ -83,7 +84,7 @@ export async function registerRoutes(
       res.status(201).json(safeUser);
     } catch (err: any) {
       if (err?.code === "23505") {
-        return res.status(409).json({ message: "اسم المستخدم مستخدم مسبقاً" });
+        return res.status(409).json({ message: t(req, "usernameTaken") });
       }
       next(err);
     }
@@ -91,7 +92,7 @@ export async function registerRoutes(
 
   app.patch("/api/users/:id", requireAdmin, async (req, res, next) => {
     const parsed = updateUserSchema.safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const updates: Record<string, unknown> = { ...parsed.data };
 
@@ -102,8 +103,7 @@ export async function registerRoutes(
           const remaining = await storage.countOtherAdmins(target.id);
           if (remaining === 0) {
             return res.status(409).json({
-              message:
-                "لا يمكن تنزيل دور آخر مدير في النظام. أنشئ مديراً آخر أوّلاً ثم أعد المحاولة.",
+              message: t(req, "cantDemoteLastAdmin"),
             });
           }
         }
@@ -128,7 +128,7 @@ export async function registerRoutes(
       if (req.user?.id === targetId) {
         return res
           .status(400)
-          .json({ message: "لا يمكنك حذف حسابك الخاص" });
+          .json({ message: t(req, "cantDeleteSelf") });
       }
 
       // Last-admin protection: refuse to delete the only remaining admin.
@@ -137,8 +137,7 @@ export async function registerRoutes(
         const remaining = await storage.countOtherAdmins(targetId);
         if (remaining === 0) {
           return res.status(409).json({
-            message:
-              "لا يمكن حذف آخر مدير في النظام. أنشئ مديراً آخر أوّلاً ثم أعد المحاولة.",
+            message: t(req, "cantDeleteLastAdmin"),
           });
         }
       }
@@ -180,7 +179,7 @@ export async function registerRoutes(
 
   app.post("/api/members", requireAuth, async (req, res, next) => {
     const parsed = insertMemberSchema.safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const member = await storage.createMember(parsed.data);
       res.status(201).json(member);
@@ -191,7 +190,7 @@ export async function registerRoutes(
 
   app.patch("/api/members/:id", requireAuth, async (req, res, next) => {
     const parsed = updateMemberSchema.safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const member = await storage.updateMember(paramId(req), parsed.data);
       if (!member) return res.status(404).json({ message: "Member not found" });
@@ -215,7 +214,7 @@ export async function registerRoutes(
     requireAuth,
     async (req, res, next) => {
       const parsed = insertSubscriptionSchema.safeParse(req.body);
-      if (!parsed.success) return handleZodError(res, parsed.error);
+      if (!parsed.success) return handleZodError(req, res, parsed.error);
       try {
         const member = await storage.getMember(paramId(req));
         if (!member) {
@@ -234,7 +233,7 @@ export async function registerRoutes(
 
   app.patch("/api/subscriptions/:id", requireAuth, async (req, res, next) => {
     const parsed = insertSubscriptionSchema.partial().safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const existing = await storage.getSubscription(paramId(req));
       if (!existing) {
@@ -263,7 +262,7 @@ export async function registerRoutes(
   // ---------- Change Password (forced on first login) ----------
   app.post("/api/user/change-password", requireAuth, async (req, res, next) => {
     const parsed = changePasswordSchema.safeParse(req.body);
-    if (!parsed.success) return handleZodError(res, parsed.error);
+    if (!parsed.success) return handleZodError(req, res, parsed.error);
     try {
       const bcrypt = await import("bcryptjs");
       const hashedPassword = await bcrypt.default.hash(parsed.data.newPassword, 10);
@@ -286,7 +285,7 @@ export async function registerRoutes(
       const rows = Array.isArray(body) ? body : body?.rows;
       const updateExisting = !Array.isArray(body) && body?.updateExisting === true;
       if (!Array.isArray(rows) || rows.length === 0) {
-        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+        return res.status(400).json({ message: t(req, "noImportRows") });
       }
 
       // Load all members once for lookup
@@ -331,7 +330,7 @@ export async function registerRoutes(
         }
         if (!member) {
           results.failed++;
-          results.errors.push(`${rowLabel}: لم يُعثر على العضو في قاعدة البيانات`);
+          results.errors.push(`${rowLabel}: ${t(req, "memberNotFound")}`);
           continue;
         }
 
@@ -361,7 +360,7 @@ export async function registerRoutes(
             results.updated++;
           } catch {
             results.failed++;
-            results.errors.push(`${rowLabel}: فشل تحديث الاشتراك`);
+            results.errors.push(`${rowLabel}: ${t(req, "subUpdateFailed")}`);
           }
           continue;
         }
@@ -375,7 +374,7 @@ export async function registerRoutes(
           results.success++;
         } catch {
           results.failed++;
-          results.errors.push(`${rowLabel}: فشل الحفظ في قاعدة البيانات`);
+          results.errors.push(`${rowLabel}: ${t(req, "dbSaveFailed")}`);
         }
       }
 
@@ -392,7 +391,7 @@ export async function registerRoutes(
       const rows = Array.isArray(body) ? body : body?.rows;
       const updateExisting = !Array.isArray(body) && body?.updateExisting === true;
       if (!Array.isArray(rows) || rows.length === 0) {
-        return res.status(400).json({ message: "لا توجد بيانات للاستيراد" });
+        return res.status(400).json({ message: t(req, "noImportRows") });
       }
 
       // Build a name -> existing member lookup
@@ -415,7 +414,7 @@ export async function registerRoutes(
         if (!parsed.success) {
           results.failed++;
           results.errors.push(
-            `الصف (${row.firstName || "?"} ${row.lastName || "?"}): ${JSON.stringify(parsed.error.flatten().fieldErrors)}`
+            `${t(req, "rowPrefix")} (${row.firstName || "?"} ${row.lastName || "?"}): ${JSON.stringify(parsed.error.flatten().fieldErrors)}`
           );
           continue;
         }
@@ -433,7 +432,7 @@ export async function registerRoutes(
             results.updated++;
           } catch {
             results.failed++;
-            results.errors.push(`فشل تحديث: ${row.firstName || ""} ${row.lastName || ""}`);
+            results.errors.push(`${t(req, "failUpdate")}: ${row.firstName || ""} ${row.lastName || ""}`);
           }
           continue;
         }
@@ -444,7 +443,7 @@ export async function registerRoutes(
           results.success++;
         } catch {
           results.failed++;
-          results.errors.push(`فشل حفظ: ${row.firstName || ""} ${row.lastName || ""}`);
+          results.errors.push(`${t(req, "failSave")}: ${row.firstName || ""} ${row.lastName || ""}`);
         }
       }
       res.json(results);
@@ -622,15 +621,11 @@ export async function registerRoutes(
         );
       if (chromiumMissing) {
         return res.status(503).json({
-          message:
-            "خاصيّة تصدير PDF غير متاحة على الخادم حالياً. يُرجى استخدام تصدير Word كبديل، أو الاتّصال بالمسؤول التقنيّ لتثبيت متصفّح Chromium.",
-          messageEn:
-            "PDF export is unavailable on this server. Please use the Word export instead, or contact the administrator to install Chromium.",
+          message: t(req, "pdfNotAvailable"),
         });
       }
       res.status(500).json({
-        message: "تعذّر توليد ملفّ PDF. حاول لاحقاً أو استخدم تصدير Word.",
-        messageEn: "Failed to generate PDF",
+        message: t(req, "pdfGenerationFailed"),
         error: msg,
       });
     } finally {

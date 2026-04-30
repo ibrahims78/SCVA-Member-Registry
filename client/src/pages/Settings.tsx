@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, type User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   Loader2, UserPlus, Pencil, Trash2, ShieldCheck,
   FileSpreadsheet, Download, Upload, DatabaseBackup,
@@ -28,12 +29,26 @@ import { useState, useRef } from "react";
 import { z } from "zod";
 import * as XLSX from "xlsx";
 
-const userFormSchema = insertUserSchema.extend({
-  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل").optional().or(z.literal("")),
-  role: z.enum(["admin", "employee"]),
-});
-type UserFormValues = z.infer<typeof userFormSchema>;
+function buildUserSchema(isAr: boolean) {
+  return insertUserSchema.extend({
+    password: z
+      .string()
+      .min(
+        6,
+        isAr
+          ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+          : "Password must be at least 6 characters",
+      )
+      .optional()
+      .or(z.literal("")),
+    role: z.enum(["admin", "employee"]),
+  });
+}
+type UserFormValues = z.infer<ReturnType<typeof buildUserSchema>>;
 
+// NOTE: Arabic labels here are used as Excel column headers for both downloading
+// the template AND matching uploaded files. They MUST stay Arabic so the
+// import parser can correctly identify columns regardless of UI language.
 const IMPORT_COLUMNS = [
   { key: "firstName",     label: "الاسم الأول *",          example: "محمد" },
   { key: "lastName",      label: "الكنية *",               example: "الأحمد" },
@@ -73,6 +88,107 @@ interface ImportResult {
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
+
+  // ---- Localised UI strings ----
+  const L = {
+    title:        isAr ? "إعدادات النظام" : "System settings",
+    subtitle:     isAr ? "إدارة المستخدمين، استيراد البيانات، والنسخ الاحتياطي." : "Manage users, import data, and backups.",
+    success:      isAr ? "تم النجاح" : "Success",
+    error:        isAr ? "خطأ" : "Error",
+    // Users
+    usersTitle:   isAr ? "إدارة المستخدمين" : "User management",
+    usersDesc:    isAr ? "إضافة وتعديل وحذف حسابات النظام." : "Add, edit, or remove system accounts.",
+    addUser:      isAr ? "إضافة مستخدم" : "Add user",
+    username:     isAr ? "اسم المستخدم" : "Username",
+    role:         isAr ? "الدور" : "Role",
+    actions:      isAr ? "الإجراءات" : "Actions",
+    admin:        isAr ? "مدير" : "Admin",
+    employee:     isAr ? "موظف" : "Employee",
+    cantDelSelf:  isAr ? "لا يمكنك حذف حسابك الخاصّ" : "You cannot delete your own account",
+    cantDelLast:  isAr ? "لا يمكن حذف آخر مدير في النظام" : "You cannot delete the last admin",
+    delUser:      isAr ? "حذف المستخدم" : "Delete user",
+    confirmDel:   isAr ? "هل أنت متأكد من حذف هذا المستخدم؟" : "Are you sure you want to delete this user?",
+    addUserOk:    isAr ? "تم إضافة المستخدم بنجاح" : "User added successfully",
+    updUserOk:    isAr ? "تم تحديث بيانات المستخدم" : "User updated",
+    delUserOk:    isAr ? "تم حذف المستخدم" : "User deleted",
+    editUser:     isAr ? "تعديل مستخدم" : "Edit user",
+    addUserNew:   isAr ? "إضافة مستخدم جديد" : "Add new user",
+    pwd:          isAr ? "كلمة المرور" : "Password",
+    pwdEdit:      isAr ? "كلمة مرور جديدة (اتركها فارغة لعدم التغيير)" : "New password (leave blank to keep current)",
+    pickRole:     isAr ? "اختر الدور" : "Select role",
+    save:         isAr ? "تحديث" : "Update",
+    add:          isAr ? "إضافة" : "Add",
+    // Imports
+    impMembers:   isAr ? "استيراد بيانات الأعضاء" : "Import members",
+    impMembersD:  isAr ? "رفع ملف Excel يحتوي على بيانات الأعضاء لإضافتهم دفعةً واحدة." : "Upload an Excel file with member data to add them in bulk.",
+    steps:        isAr ? "الخطوات:" : "Steps:",
+    step1:        isAr ? "حمّل نموذج Excel الرسمي بالضغط على الزر أدناه." : "Download the official Excel template using the button below.",
+    step2:        isAr ? "أدخل بيانات الأعضاء في الملف (الاسم الأول والكنية إلزاميان، باقي الحقول اختيارية)." : "Fill in the member data (first and last name are required, the rest are optional).",
+    step3:        isAr ? "ارفع الملف المعبّأ لبدء الاستيراد التلقائي." : "Upload the completed file to start the automatic import.",
+    dlTemplate:   isAr ? "تحميل نموذج Excel" : "Download Excel template",
+    importing:    isAr ? "جارٍ الاستيراد..." : "Importing...",
+    uploadFile:   isAr ? "رفع ملف الاستيراد" : "Upload import file",
+    updExisting:  isAr ? "تحديث بيانات الأعضاء الموجودين" : "Update existing members",
+    updExHelp:    isAr ? "عند تفعيله، يُحدِّث بيانات أي عضو يتطابق اسمه (الأول + الكنية) بدلاً من تجاهله." : "When enabled, updates any member whose name (first + last) matches instead of skipping it.",
+    importRes:    isAr ? "نتائج الاستيراد" : "Import results",
+    succeeded:    isAr ? "تمّ بنجاح:" : "Succeeded:",
+    failed:       isAr ? "فشل:" : "Failed:",
+    updated:      isAr ? "تمّ التحديث:" : "Updated:",
+    skipped:      isAr ? "تمّ تجاهل (موجود مسبقاً):" : "Skipped (already exists):",
+    emptyFile:    isAr ? "الملف فارغ" : "Empty file",
+    noData:       isAr ? "لا توجد بيانات في الملف." : "No data found in the file.",
+    readErr:      isAr ? "خطأ في قراءة الملف" : "Failed to read file",
+    importDone:   isAr ? "اكتمل الاستيراد" : "Import complete",
+    addedN:       isAr ? "أُضيف" : "Added",
+    updatedN:     isAr ? "حُدِّث" : "Updated",
+    failedN:      isAr ? "فشل" : "Failed",
+    sep:          isAr ? "، " : ", ",
+    tplDl:        isAr ? "تم تحميل النموذج" : "Template downloaded",
+    tplDlD:       isAr ? "يمكنك الآن ملء البيانات واستيرادها." : "You can now fill in the data and import it.",
+    // Subscriptions import
+    impSubs:      isAr ? "استيراد الاشتراكات السنوية" : "Import annual subscriptions",
+    impSubsD:     isAr ? "رفع ملف Excel يحتوي على اشتراكات الأعضاء وربطها تلقائياً بسجلاتهم." : "Upload an Excel file with member payments to link them to their records.",
+    matchTitle:   isAr ? "طريقة المطابقة مع الأعضاء:" : "Matching method:",
+    matchById:    isAr ? "الأدق والأسرع (موصى به)" : "Most accurate and fastest (recommended)",
+    matchByName:  isAr ? "بديل تلقائي" : "Automatic fallback",
+    membershipNo: isAr ? "رقم العضوية" : "Membership number",
+    nameCombo:    isAr ? "الاسم الأول + الكنية" : "First name + last name",
+    requiredCols: isAr ? "الحقول المطلوبة في الملف:" : "Required fields in the file:",
+    fNoOrName:    isAr ? "رقم العضوية أو الاسم" : "Membership number or name",
+    fNoOrNameD:   isAr ? "للمطابقة" : "for matching",
+    fYear:        isAr ? "سنة الاشتراك" : "Subscription year",
+    fYearD:       isAr ? "مثل 2024" : "e.g. 2024",
+    fAmount:      isAr ? "المبلغ" : "Amount",
+    fAmountD:     isAr ? "رقم صحيح" : "integer",
+    fDate:        isAr ? "تاريخ الدفع" : "Payment date",
+    fDateD:       "YYYY-MM-DD",
+    dlSubTpl:     isAr ? "تحميل نموذج الاشتراكات" : "Download subscriptions template",
+    uploadSub:    isAr ? "رفع ملف الاشتراكات" : "Upload subscriptions file",
+    updSubExist:  isAr ? "تحديث الاشتراكات الموجودة" : "Update existing subscriptions",
+    updSubHelp:   isAr ? "عند تفعيله، يُحدِّث المبلغ والتاريخ والملاحظات لأي اشتراك موجود لنفس العضو ونفس السنة بدلاً من تجاهله." : "When enabled, updates amount, date and notes for any existing payment for the same member and year instead of skipping.",
+    subResults:   isAr ? "نتائج استيراد الاشتراكات" : "Subscriptions import results",
+    subTplDl:     isAr ? "تم تحميل نموذج الاشتراكات" : "Subscriptions template downloaded",
+    subImpDone:   isAr ? "اكتمل استيراد الاشتراكات" : "Subscriptions import complete",
+    // Backup
+    backupTitle:  isAr ? "النسخ الاحتياطي" : "Backup",
+    backupDesc:   isAr ? "تصدير نسخة احتياطية كاملة لجميع بيانات النظام (الأعضاء، الاشتراكات، المستخدمين)." : "Export a full backup of all system data (members, subscriptions, users).",
+    backupIncl:   isAr ? "تشمل النسخة الاحتياطية:" : "The backup includes:",
+    backupAllM:   isAr ? "بيانات جميع الأعضاء" : "All member data",
+    backupAllS:   isAr ? "سجلّات الاشتراكات السنوية" : "Annual subscription records",
+    backupUsers:  isAr ? "قائمة المستخدمين (بدون كلمات المرور)" : "User list (without passwords)",
+    backupNote:   isAr ? "يُحفظ الملف بصيغة JSON ويمكن الاستفادة منه للأرشفة أو استعادة البيانات مستقبلاً." : "The file is saved as JSON and can be used for archiving or future restore.",
+    exporting:    isAr ? "جارٍ التصدير..." : "Exporting...",
+    exportBackup: isAr ? "تصدير نسخة احتياطية" : "Export backup",
+    exportOk:     isAr ? "تم التصدير" : "Export complete",
+    exportOkD:    isAr ? "تم تحميل النسخة الاحتياطية بنجاح." : "Backup downloaded successfully.",
+    exportErr:    isAr ? "خطأ في التصدير" : "Export failed",
+    // Access denied
+    notAllowed:   isAr ? "غير مسموح بالدخول" : "Access denied",
+    notAllowedD:  isAr ? "عذراً، صفحة الإعدادات متاحة للمدراء فقط." : "Sorry, the settings page is available to admins only.",
+  };
+
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -85,6 +201,8 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subFileInputRef = useRef<HTMLInputElement>(null);
 
+  const userFormSchema = buildUserSchema(isAr);
+
   const { data: users, isLoading } = useQuery<User[]>({ queryKey: ["/api/users"] });
   const { data: currentUser } = useQuery<User>({ queryKey: ["/api/user"] });
 
@@ -92,7 +210,7 @@ export default function Settings() {
   const adminCount = (users ?? []).filter((u) => u.role === "admin").length;
 
   const onMutationError = (err: Error) => {
-    toast({ title: "خطأ", description: err.message, variant: "destructive" });
+    toast({ title: L.error, description: err.message, variant: "destructive" });
   };
 
   const createUserMutation = useMutation({
@@ -102,7 +220,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "تم النجاح", description: "تم إضافة المستخدم بنجاح" });
+      toast({ title: L.success, description: L.addUserOk });
       setIsDialogOpen(false);
     },
     onError: onMutationError,
@@ -115,7 +233,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "تم النجاح", description: "تم تحديث بيانات المستخدم" });
+      toast({ title: L.success, description: L.updUserOk });
       setIsDialogOpen(false);
     },
     onError: onMutationError,
@@ -127,7 +245,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "تم النجاح", description: "تم حذف المستخدم" });
+      toast({ title: L.success, description: L.delUserOk });
     },
     onError: onMutationError,
   });
@@ -183,7 +301,7 @@ export default function Settings() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "نموذج الاستيراد");
     XLSX.writeFile(wb, "نموذج-استيراد-الاعضاء.xlsx");
-    toast({ title: "تم تحميل النموذج", description: "يمكنك الآن ملء البيانات واستيرادها." });
+    toast({ title: L.tplDl, description: L.tplDlD });
   };
 
   // ---- Excel file import ----
@@ -199,7 +317,7 @@ export default function Settings() {
       const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
       if (rawRows.length < 2) {
-        toast({ title: "الملف فارغ", description: "لا توجد بيانات في الملف.", variant: "destructive" });
+        toast({ title: L.emptyFile, description: L.noData, variant: "destructive" });
         setIsImporting(false);
         return;
       }
@@ -233,16 +351,16 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
       if (result.success > 0 || (result.updated ?? 0) > 0) {
         const parts: string[] = [];
-        if (result.success > 0) parts.push(`أُضيف ${result.success}`);
-        if ((result.updated ?? 0) > 0) parts.push(`حُدِّث ${result.updated}`);
-        if (result.failed > 0) parts.push(`فشل ${result.failed}`);
+        if (result.success > 0) parts.push(`${L.addedN} ${result.success}`);
+        if ((result.updated ?? 0) > 0) parts.push(`${L.updatedN} ${result.updated}`);
+        if (result.failed > 0) parts.push(`${L.failedN} ${result.failed}`);
         toast({
-          title: "اكتمل الاستيراد",
-          description: parts.join("، "),
+          title: L.importDone,
+          description: parts.join(L.sep),
         });
       }
     } catch {
-      toast({ title: "خطأ في قراءة الملف", variant: "destructive" });
+      toast({ title: L.readErr, variant: "destructive" });
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -271,7 +389,7 @@ export default function Settings() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "نموذج الاشتراكات");
     XLSX.writeFile(wb, "نموذج-استيراد-الاشتراكات.xlsx");
-    toast({ title: "تم تحميل نموذج الاشتراكات" });
+    toast({ title: L.subTplDl });
   };
 
   // ---- Subscriptions file import ----
@@ -287,7 +405,7 @@ export default function Settings() {
       const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
       if (rawRows.length < 2) {
-        toast({ title: "الملف فارغ", variant: "destructive" });
+        toast({ title: L.emptyFile, variant: "destructive" });
         setIsSubImporting(false);
         return;
       }
@@ -323,16 +441,16 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
       if (result.success > 0 || (result.updated ?? 0) > 0) {
         const parts: string[] = [];
-        if (result.success > 0) parts.push(`أُضيف ${result.success}`);
-        if ((result.updated ?? 0) > 0) parts.push(`حُدِّث ${result.updated}`);
-        if (result.failed > 0) parts.push(`فشل ${result.failed}`);
+        if (result.success > 0) parts.push(`${L.addedN} ${result.success}`);
+        if ((result.updated ?? 0) > 0) parts.push(`${L.updatedN} ${result.updated}`);
+        if (result.failed > 0) parts.push(`${L.failedN} ${result.failed}`);
         toast({
-          title: "اكتمل استيراد الاشتراكات",
-          description: parts.join("، "),
+          title: L.subImpDone,
+          description: parts.join(L.sep),
         });
       }
     } catch {
-      toast({ title: "خطأ في قراءة الملف", variant: "destructive" });
+      toast({ title: L.readErr, variant: "destructive" });
     } finally {
       setIsSubImporting(false);
       if (subFileInputRef.current) subFileInputRef.current.value = "";
@@ -351,9 +469,9 @@ export default function Settings() {
       a.download = `scva-backup-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "تم التصدير", description: "تم تحميل النسخة الاحتياطية بنجاح." });
+      toast({ title: L.exportOk, description: L.exportOkD });
     } catch {
-      toast({ title: "خطأ في التصدير", variant: "destructive" });
+      toast({ title: L.exportErr, variant: "destructive" });
     } finally {
       setIsBackingUp(false);
     }
@@ -367,8 +485,8 @@ export default function Settings() {
         <div className="h-20 w-20 rounded-full bg-destructive/10 flex items-center justify-center">
           <ShieldCheck className="h-10 w-10 text-destructive" />
         </div>
-        <h2 className="text-2xl font-bold">غير مسموح بالدخول</h2>
-        <p className="text-muted-foreground max-w-sm">عذراً، صفحة الإعدادات متاحة للمدراء فقط.</p>
+        <h2 className="text-2xl font-bold">{L.notAllowed}</h2>
+        <p className="text-muted-foreground max-w-sm">{L.notAllowedD}</p>
       </div>
     );
   }
@@ -376,20 +494,20 @@ export default function Settings() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">إعدادات النظام</h1>
-        <p className="text-muted-foreground mt-1">إدارة المستخدمين، استيراد البيانات، والنسخ الاحتياطي.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{L.title}</h1>
+        <p className="text-muted-foreground mt-1">{L.subtitle}</p>
       </div>
 
       {/* ===== User Management ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
           <div>
-            <CardTitle className="text-lg">إدارة المستخدمين</CardTitle>
-            <CardDescription>إضافة وتعديل وحذف حسابات النظام.</CardDescription>
+            <CardTitle className="text-lg">{L.usersTitle}</CardTitle>
+            <CardDescription>{L.usersDesc}</CardDescription>
           </div>
           <Button onClick={startAdd} size="sm">
             <UserPlus className="ms-2 h-4 w-4" />
-            إضافة مستخدم
+            {L.addUser}
           </Button>
         </CardHeader>
         <CardContent className="p-0">
@@ -397,9 +515,9 @@ export default function Settings() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40">
-                  <TableHead className="text-right font-semibold">اسم المستخدم</TableHead>
-                  <TableHead className="text-right font-semibold">الدور</TableHead>
-                  <TableHead className="text-left font-semibold w-24">الإجراءات</TableHead>
+                  <TableHead className={`${isAr ? "text-right" : "text-left"} font-semibold`}>{L.username}</TableHead>
+                  <TableHead className={`${isAr ? "text-right" : "text-left"} font-semibold`}>{L.role}</TableHead>
+                  <TableHead className={`${isAr ? "text-left" : "text-right"} font-semibold w-24`}>{L.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -409,20 +527,20 @@ export default function Settings() {
                     user.role === "admin" && adminCount <= 1;
                   const cannotDelete = isSelf || isLastAdmin;
                   const deleteTitle = isSelf
-                    ? "لا يمكنك حذف حسابك الخاصّ"
+                    ? L.cantDelSelf
                     : isLastAdmin
-                    ? "لا يمكن حذف آخر مدير في النظام"
-                    : "حذف المستخدم";
+                    ? L.cantDelLast
+                    : L.delUser;
                   return (
                     <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>
                         <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                          {user.role === "admin" ? "مدير" : "موظف"}
+                          {user.role === "admin" ? L.admin : L.employee}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-left">
-                        <div className="flex gap-1 justify-end">
+                      <TableCell className={isAr ? "text-left" : "text-right"}>
+                        <div className={`flex gap-1 ${isAr ? "justify-end" : "justify-start"}`}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -441,7 +559,7 @@ export default function Settings() {
                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-auto"
                             onClick={() => {
                               if (cannotDelete) return;
-                              if (confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
+                              if (confirm(L.confirmDel)) {
                                 deleteUserMutation.mutate(user.id);
                               }
                             }}
@@ -468,25 +586,25 @@ export default function Settings() {
               <FileSpreadsheet className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-lg">استيراد بيانات الأعضاء</CardTitle>
-              <CardDescription>رفع ملف Excel يحتوي على بيانات الأعضاء لإضافتهم دفعةً واحدة.</CardDescription>
+              <CardTitle className="text-lg">{L.impMembers}</CardTitle>
+              <CardDescription>{L.impMembersD}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm font-medium">الخطوات:</p>
+            <p className="text-sm font-medium">{L.steps}</p>
             <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
-              <li>حمّل نموذج Excel الرسمي بالضغط على الزر أدناه.</li>
-              <li>أدخل بيانات الأعضاء في الملف (الاسم الأول والكنية إلزاميان، باقي الحقول اختيارية).</li>
-              <li>ارفع الملف المعبّأ لبدء الاستيراد التلقائي.</li>
+              <li>{L.step1}</li>
+              <li>{L.step2}</li>
+              <li>{L.step3}</li>
             </ol>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={downloadTemplate} className="gap-2">
               <Download className="h-4 w-4" />
-              تحميل نموذج Excel
+              {L.dlTemplate}
             </Button>
 
             <div className="relative">
@@ -501,7 +619,7 @@ export default function Settings() {
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
-                {isImporting ? "جارٍ الاستيراد..." : "رفع ملف الاستيراد"}
+                {isImporting ? L.importing : L.uploadFile}
               </Button>
               <input
                 ref={fileInputRef}
@@ -522,17 +640,15 @@ export default function Settings() {
               className="mt-0.5"
             />
             <div className="space-y-0.5 text-sm">
-              <span className="font-medium">تحديث بيانات الأعضاء الموجودين</span>
-              <p className="text-xs text-muted-foreground">
-                عند تفعيله، يُحدِّث بيانات أي عضو يتطابق اسمه (الأول + الكنية) بدلاً من تجاهله.
-              </p>
+              <span className="font-medium">{L.updExisting}</span>
+              <p className="text-xs text-muted-foreground">{L.updExHelp}</p>
             </div>
           </label>
 
           {importResult && (
             <div className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-sm">نتائج الاستيراد</p>
+                <p className="font-semibold text-sm">{L.importRes}</p>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setImportResult(null)}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
@@ -540,24 +656,24 @@ export default function Settings() {
               <div className="flex gap-4">
                 <div className="flex items-center gap-2 text-sm text-emerald-600">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>تمّ بنجاح: <strong>{importResult.success}</strong></span>
+                  <span>{L.succeeded} <strong>{importResult.success}</strong></span>
                 </div>
                 {importResult.failed > 0 && (
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <span>فشل: <strong>{importResult.failed}</strong></span>
+                    <span>{L.failed} <strong>{importResult.failed}</strong></span>
                   </div>
                 )}
                 {importResult.updated !== undefined && importResult.updated > 0 && (
                   <div className="flex items-center gap-2 text-sm text-blue-600">
                     <CheckCircle2 className="h-4 w-4" />
-                    <span>تمّ التحديث: <strong>{importResult.updated}</strong></span>
+                    <span>{L.updated} <strong>{importResult.updated}</strong></span>
                   </div>
                 )}
                 {importResult.skipped !== undefined && importResult.skipped > 0 && (
                   <div className="flex items-center gap-2 text-sm text-amber-600">
                     <AlertCircle className="h-4 w-4" />
-                    <span>تمّ تجاهل (موجود مسبقاً): <strong>{importResult.skipped}</strong></span>
+                    <span>{L.skipped} <strong>{importResult.skipped}</strong></span>
                   </div>
                 )}
               </div>
@@ -581,32 +697,32 @@ export default function Settings() {
               <Receipt className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-lg">استيراد الاشتراكات السنوية</CardTitle>
-              <CardDescription>رفع ملف Excel يحتوي على اشتراكات الأعضاء وربطها تلقائياً بسجلاتهم.</CardDescription>
+              <CardTitle className="text-lg">{L.impSubs}</CardTitle>
+              <CardDescription>{L.impSubsD}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm font-medium">طريقة المطابقة مع الأعضاء:</p>
+            <p className="text-sm font-medium">{L.matchTitle}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <span className="text-primary font-bold mt-0.5">①</span>
-                <span><strong>رقم العضوية</strong> — الأدق والأسرع (موصى به)</span>
+                <span><strong>{L.membershipNo}</strong> — {L.matchById}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-primary font-bold mt-0.5">②</span>
-                <span><strong>الاسم الأول + الكنية</strong> — بديل تلقائي</span>
+                <span><strong>{L.nameCombo}</strong> — {L.matchByName}</span>
               </div>
             </div>
             <div className="border-t pt-3">
-              <p className="text-sm font-medium mb-1.5">الحقول المطلوبة في الملف:</p>
+              <p className="text-sm font-medium mb-1.5">{L.requiredCols}</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { label: "رقم العضوية أو الاسم", note: "للمطابقة" },
-                  { label: "سنة الاشتراك", note: "مثل 2024" },
-                  { label: "المبلغ", note: "رقم صحيح" },
-                  { label: "تاريخ الدفع", note: "YYYY-MM-DD" },
+                  { label: L.fNoOrName, note: L.fNoOrNameD },
+                  { label: L.fYear,     note: L.fYearD },
+                  { label: L.fAmount,   note: L.fAmountD },
+                  { label: L.fDate,     note: L.fDateD },
                 ].map((f) => (
                   <span key={f.label} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs">
                     <strong>{f.label}</strong>
@@ -620,7 +736,7 @@ export default function Settings() {
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={downloadSubTemplate} className="gap-2">
               <Download className="h-4 w-4" />
-              تحميل نموذج الاشتراكات
+              {L.dlSubTpl}
             </Button>
             <div className="relative">
               <Button
@@ -630,7 +746,7 @@ export default function Settings() {
                 className="gap-2"
               >
                 {isSubImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {isSubImporting ? "جارٍ الاستيراد..." : "رفع ملف الاشتراكات"}
+                {isSubImporting ? L.importing : L.uploadSub}
               </Button>
               <input
                 ref={subFileInputRef}
@@ -651,17 +767,15 @@ export default function Settings() {
               className="mt-0.5"
             />
             <div className="space-y-0.5 text-sm">
-              <span className="font-medium">تحديث الاشتراكات الموجودة</span>
-              <p className="text-xs text-muted-foreground">
-                عند تفعيله، يُحدِّث المبلغ والتاريخ والملاحظات لأي اشتراك موجود لنفس العضو ونفس السنة بدلاً من تجاهله.
-              </p>
+              <span className="font-medium">{L.updSubExist}</span>
+              <p className="text-xs text-muted-foreground">{L.updSubHelp}</p>
             </div>
           </label>
 
           {subImportResult && (
             <div className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-sm">نتائج استيراد الاشتراكات</p>
+                <p className="font-semibold text-sm">{L.subResults}</p>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSubImportResult(null)}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
@@ -669,24 +783,24 @@ export default function Settings() {
               <div className="flex gap-4">
                 <div className="flex items-center gap-2 text-sm text-emerald-600">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>تمّ بنجاح: <strong>{subImportResult.success}</strong></span>
+                  <span>{L.succeeded} <strong>{subImportResult.success}</strong></span>
                 </div>
                 {subImportResult.failed > 0 && (
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <span>فشل: <strong>{subImportResult.failed}</strong></span>
+                    <span>{L.failed} <strong>{subImportResult.failed}</strong></span>
                   </div>
                 )}
                 {subImportResult.updated !== undefined && subImportResult.updated > 0 && (
                   <div className="flex items-center gap-2 text-sm text-blue-600">
                     <CheckCircle2 className="h-4 w-4" />
-                    <span>تمّ التحديث: <strong>{subImportResult.updated}</strong></span>
+                    <span>{L.updated} <strong>{subImportResult.updated}</strong></span>
                   </div>
                 )}
                 {subImportResult.skipped !== undefined && subImportResult.skipped > 0 && (
                   <div className="flex items-center gap-2 text-sm text-amber-600">
                     <AlertCircle className="h-4 w-4" />
-                    <span>تمّ تجاهل (موجود مسبقاً): <strong>{subImportResult.skipped}</strong></span>
+                    <span>{L.skipped} <strong>{subImportResult.skipped}</strong></span>
                   </div>
                 )}
               </div>
@@ -710,20 +824,20 @@ export default function Settings() {
               <DatabaseBackup className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-lg">النسخ الاحتياطي</CardTitle>
-              <CardDescription>تصدير نسخة احتياطية كاملة لجميع بيانات النظام (الأعضاء، الاشتراكات، المستخدمين).</CardDescription>
+              <CardTitle className="text-lg">{L.backupTitle}</CardTitle>
+              <CardDescription>{L.backupDesc}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground space-y-1.5">
-            <p>تشمل النسخة الاحتياطية:</p>
+            <p>{L.backupIncl}</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>بيانات جميع الأعضاء</li>
-              <li>سجلّات الاشتراكات السنوية</li>
-              <li>قائمة المستخدمين (بدون كلمات المرور)</li>
+              <li>{L.backupAllM}</li>
+              <li>{L.backupAllS}</li>
+              <li>{L.backupUsers}</li>
             </ul>
-            <p className="pt-1 text-xs">يُحفظ الملف بصيغة JSON ويمكن الاستفادة منه للأرشفة أو استعادة البيانات مستقبلاً.</p>
+            <p className="pt-1 text-xs">{L.backupNote}</p>
           </div>
           <Button onClick={handleBackup} disabled={isBackingUp} variant="outline" className="gap-2">
             {isBackingUp ? (
@@ -731,7 +845,7 @@ export default function Settings() {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {isBackingUp ? "جارٍ التصدير..." : "تصدير نسخة احتياطية"}
+            {isBackingUp ? L.exporting : L.exportBackup}
           </Button>
         </CardContent>
       </Card>
@@ -740,35 +854,35 @@ export default function Settings() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUser ? "تعديل مستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
+            <DialogTitle>{editingUser ? L.editUser : L.addUserNew}</DialogTitle>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label>اسم المستخدم</Label>
+              <Label>{L.username}</Label>
               <Input {...form.register("username")} />
               {form.formState.errors.username && (
                 <p className="text-sm text-destructive">{form.formState.errors.username.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>{editingUser ? "كلمة مرور جديدة (اتركها فارغة لعدم التغيير)" : "كلمة المرور"}</Label>
+              <Label>{editingUser ? L.pwdEdit : L.pwd}</Label>
               <Input type="password" {...form.register("password")} />
               {form.formState.errors.password && (
                 <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>الدور</Label>
+              <Label>{L.role}</Label>
               <Select
                 defaultValue={form.getValues("role")}
                 onValueChange={(val: any) => form.setValue("role", val)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر الدور" />
+                  <SelectValue placeholder={L.pickRole} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">مدير</SelectItem>
-                  <SelectItem value="employee">موظف</SelectItem>
+                  <SelectItem value="admin">{L.admin}</SelectItem>
+                  <SelectItem value="employee">{L.employee}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -780,7 +894,7 @@ export default function Settings() {
               {(createUserMutation.isPending || updateUserMutation.isPending) && (
                 <Loader2 className="ms-2 h-4 w-4 animate-spin" />
               )}
-              {editingUser ? "تحديث" : "إضافة"}
+              {editingUser ? L.save : L.add}
             </Button>
           </form>
         </DialogContent>

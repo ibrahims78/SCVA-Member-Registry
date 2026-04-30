@@ -48,8 +48,8 @@ import { apiRequest } from "@/lib/queryClient";
 // Keeping the shape derived from `insertMemberSchema` ensures that any
 // future change to the shared model (e.g. a new required field) is enforced
 // here automatically — no more silent drift between client and server.
-const memberSchema = insertMemberSchema
-  .extend({
+function buildMemberSchema(isAr: boolean) {
+  return insertMemberSchema.extend({
     fullName: z.string().optional(),
     fatherName: z.string().optional(),
     englishName: z.string().optional(),
@@ -57,7 +57,7 @@ const memberSchema = insertMemberSchema
     specialty: z.string().optional(),
     email: z
       .string()
-      .email("بريد إلكتروني غير صالح")
+      .email(isAr ? "بريد إلكتروني غير صالح" : "Invalid email address")
       .optional()
       .or(z.literal("")),
     phone: z.string().optional(),
@@ -67,8 +67,9 @@ const memberSchema = insertMemberSchema
     escId: z.string().optional(),
     membershipNumber: z.string().optional(),
   });
+}
 
-type MemberFormValues = z.infer<typeof memberSchema>;
+type MemberFormValues = z.infer<ReturnType<typeof buildMemberSchema>>;
 
 function FormSection({
   icon: Icon,
@@ -109,6 +110,7 @@ export default function AddMember() {
   const { toast } = useToast();
   const isAr = language === "ar";
   const BackArrow = direction === "rtl" ? ArrowRight : ArrowLeft;
+  const memberSchema = buildMemberSchema(isAr);
 
   const form = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),

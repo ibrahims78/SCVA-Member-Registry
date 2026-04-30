@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { loginSchema, type User as SelectUser } from "@shared/schema";
+import { t } from "./i18n";
 
 declare global {
   namespace Express {
@@ -62,12 +63,12 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
+    new LocalStrategy({ passReqToCallback: true }, async (req, username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
         if (!user || !(await bcrypt.compare(password, user.password))) {
           return done(null, false, {
-            message: "اسم المستخدم أو كلمة المرور غير صحيحة",
+            message: t(req as Request, "badCredentials"),
           });
         }
         return done(null, user);
@@ -92,9 +93,10 @@ export async function setupAuth(app: Express) {
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-    message: {
-      message:
-        "تجاوزت عدد محاولات تسجيل الدخول المسموح بها. يرجى المحاولة بعد 15 دقيقة.",
+    // Built dynamically per-request so the response respects the user's
+    // currently-selected UI language.
+    handler: (req, res) => {
+      res.status(429).json({ message: t(req, "tooManyAttempts") });
     },
     skip: () => process.env.NODE_ENV === "test",
   });
@@ -102,14 +104,14 @@ export async function setupAuth(app: Express) {
   app.post("/api/login", loginLimiter, (req: Request, res: Response, next: NextFunction) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: "بيانات غير صالحة" });
+      return res.status(400).json({ message: t(req, "invalidData") });
     }
     passport.authenticate("local", (err: any, user: SelectUser | false) => {
       if (err) return next(err);
       if (!user) {
         return res
           .status(401)
-          .json({ message: "اسم المستخدم أو كلمة المرور غير صحيحة" });
+          .json({ message: t(req, "badCredentials") });
       }
       req.login(user, (loginErr) => {
         if (loginErr) return next(loginErr);

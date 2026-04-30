@@ -1,5 +1,34 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+/**
+ * Reads the user's currently selected UI language so the backend can
+ * tailor error/success messages, PDFs, and other server-rendered output
+ * to match what the user sees in the interface.
+ *
+ * Source of truth: the same `scva.lang` localStorage key written by
+ * `LanguageContext`. Defaults to Arabic when nothing has been set yet.
+ */
+function getUiLang(): string {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const v = localStorage.getItem("scva.lang");
+      if (v === "ar" || v === "en") return v;
+    }
+  } catch {
+    // ignore (SSR / disabled storage)
+  }
+  return "ar";
+}
+
+function buildHeaders(extra?: Record<string, string>): Record<string, string> {
+  const lang = getUiLang();
+  return {
+    "X-UI-Lang": lang,
+    "Accept-Language": lang,
+    ...(extra ?? {}),
+  };
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let message = res.statusText;
@@ -23,7 +52,7 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: buildHeaders(data ? { "Content-Type": "application/json" } : undefined),
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -78,6 +107,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(buildUrlFromKey(queryKey), {
+      headers: buildHeaders(),
       credentials: "include",
     });
 
