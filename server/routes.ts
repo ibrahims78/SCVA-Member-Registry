@@ -569,29 +569,115 @@ export async function registerRoutes(
 
       await page.evaluate(
         (logo: string, title: string, subtitle: string) => {
+          // ---- Force light theme regardless of the user's UI preference ----
+          // The app defaults to a dark theme, which produces a near-black
+          // hero gradient and translucent white pills designed for that
+          // background. For PDF export we always want a clean, paper-like
+          // light layout, so we strip the `dark` class and switch the
+          // browser color-scheme hint to light.
+          document.documentElement.classList.remove("dark");
+          document.documentElement.style.colorScheme = "light";
+
           const style = document.createElement("style");
           style.textContent = `
-            #replit-dev-banner, .replit-watermark, [class*="replit"], [id*="replit"] {
+            /* Hide Replit overlay/banner */
+            #replit-dev-banner, .replit-watermark,
+            [class*="replit"], [id*="replit"] {
               display: none !important;
             }
-            * { color: black !important; -webkit-print-color-adjust: exact; }
-            @media print {
-              .pdf-header { display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-              .pdf-logo { width: 80px; height: 80px; object-fit: contain; }
-              .pdf-title { text-align: center; flex-grow: 1; }
+
+            /* Print backgrounds reliably */
+            * { -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important; }
+
+            /* ---- Page surface: clean white, dark text ---- */
+            html, body {
+              background: #ffffff !important;
+              color: #0f172a !important;
             }
+
+            /* ---- Hero card: kill the dark gradient, replace with a
+               professional light brand-bar (subtle teal accent) ---- */
+            .bg-brand-gradient {
+              background: linear-gradient(135deg, #f8fafc 0%, #eef6fa 100%) !important;
+              color: #0f172a !important;
+              border-bottom: 3px solid #096B8F !important;
+              box-shadow: none !important;
+            }
+            .bg-brand-gradient * {
+              color: #0f172a !important;
+              text-shadow: none !important;
+              filter: none !important;
+            }
+            .bg-brand-gradient h1 {
+              color: #064a64 !important;
+              font-weight: 800 !important;
+            }
+            .bg-brand-gradient p {
+              color: #334155 !important;
+            }
+            /* Hide the decorative grid overlay used in the UI */
+            .bg-grid-soft { display: none !important; }
+
+            /* ---- Pills inside the hero (membership type, #, date, city) ----
+               They were translucent white over a dark gradient. Repaint them
+               as light cards with a soft border and dark text. */
+            .bg-brand-gradient [class*="bg-white\\/"],
+            .bg-brand-gradient .bg-white\\/15,
+            .bg-brand-gradient .bg-white\\/20 {
+              background: #ffffff !important;
+              color: #0f172a !important;
+              border: 1px solid #cbd5e1 !important;
+              box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+              backdrop-filter: none !important;
+            }
+
+            /* ---- Generic card surfaces: ensure they stay light ---- */
+            [class*="bg-card"], .bg-card {
+              background: #ffffff !important;
+              color: #0f172a !important;
+            }
+            [class*="text-muted-foreground"] {
+              color: #475569 !important;
+            }
+            [class*="text-foreground"] {
+              color: #0f172a !important;
+            }
+
+            /* ---- Section accent bars (the small primary stripe in CardTitle) */
+            .bg-primary { background-color: #096B8F !important; }
+
+            /* ---- Hide controls that don't belong in the PDF ---- */
+            .print\\:hidden, [data-print="hide"] { display: none !important; }
+
+            /* ---- PDF header (logo + association name strip) ---- */
+            .pdf-header {
+              display: flex !important;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 24px;
+              padding-bottom: 16px;
+              border-bottom: 2px solid #e2e8f0;
+            }
+            .pdf-logo { width: 72px; height: 72px; object-fit: contain; }
+            .pdf-title { text-align: center; flex-grow: 1; }
+            .pdf-title h2 { color: #064a64 !important; margin: 0; font-weight: 800; }
+            .pdf-title p { color: #475569 !important; margin: 4px 0 0 0; font-size: 13px; }
+
+            /* Page-break protection for important blocks */
+            .pdf-no-break, h1, h2, h3 { break-inside: avoid; page-break-inside: avoid; }
           `;
           document.head.appendChild(style);
 
           const header = document.createElement("div");
-          header.className = "pdf-header";
+          header.className = "pdf-header pdf-no-break";
           header.innerHTML = `
-            <img src="${logo}" class="pdf-logo" />
+            <img src="${logo}" class="pdf-logo" alt="" />
             <div class="pdf-title">
-              <h2 style="margin:0; color:black;">${title}</h2>
-              <p style="margin:5px 0 0 0; color:black;">${subtitle}</p>
+              <h2>${title}</h2>
+              <p>${subtitle}</p>
             </div>
-            <div style="width: 80px;"></div>
+            <div style="width: 72px;"></div>
           `;
 
           const content = document.getElementById("member-report-content");
