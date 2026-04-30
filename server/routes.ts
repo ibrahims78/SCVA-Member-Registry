@@ -550,41 +550,58 @@ export async function registerRoutes(
         );
       }
 
+      // Honour the caller's UI language so the rendered page matches it.
+      const langParam = (req.query.lang === "en" ? "en" : "ar") as "ar" | "en";
+
       // Always go through the loopback interface — bypasses any reverse proxy.
       const port = process.env.PORT || "5000";
-      const memberUrl = `http://127.0.0.1:${port}/member/${paramId(req)}?print=true`;
+      const memberUrl = `http://127.0.0.1:${port}/member/${paramId(req)}?print=true&lang=${langParam}`;
 
       await page.goto(memberUrl, { waitUntil: "networkidle0" });
 
-      await page.evaluate((logo: string) => {
-        const style = document.createElement("style");
-        style.textContent = `
-          #replit-dev-banner, .replit-watermark, [class*="replit"], [id*="replit"] {
-            display: none !important;
-          }
-          * { color: black !important; -webkit-print-color-adjust: exact; }
-          @media print {
-            .pdf-header { display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-            .pdf-logo { width: 80px; height: 80px; object-fit: contain; }
-            .pdf-title { text-align: center; flex-grow: 1; }
-          }
-        `;
-        document.head.appendChild(style);
+      const headerTitle =
+        langParam === "en"
+          ? "Syrian Cardiovascular Association"
+          : "الرابطة السورية لأمراض وجراحة القلب";
+      const headerSubtitle =
+        langParam === "en"
+          ? "الرابطة السورية لأمراض وجراحة القلب"
+          : "Syrian Cardiovascular Association";
 
-        const header = document.createElement("div");
-        header.className = "pdf-header";
-        header.innerHTML = `
-          <img src="${logo}" class="pdf-logo" />
-          <div class="pdf-title">
-            <h2 style="margin:0; color:black;">الرابطة السورية لأمراض وجراحة القلب</h2>
-            <p style="margin:5px 0 0 0; color:black;">Syrian Cardiovascular Association</p>
-          </div>
-          <div style="width: 80px;"></div>
-        `;
+      await page.evaluate(
+        (logo: string, title: string, subtitle: string) => {
+          const style = document.createElement("style");
+          style.textContent = `
+            #replit-dev-banner, .replit-watermark, [class*="replit"], [id*="replit"] {
+              display: none !important;
+            }
+            * { color: black !important; -webkit-print-color-adjust: exact; }
+            @media print {
+              .pdf-header { display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+              .pdf-logo { width: 80px; height: 80px; object-fit: contain; }
+              .pdf-title { text-align: center; flex-grow: 1; }
+            }
+          `;
+          document.head.appendChild(style);
 
-        const content = document.getElementById("member-report-content");
-        if (content) content.insertBefore(header, content.firstChild);
-      }, logoBase64);
+          const header = document.createElement("div");
+          header.className = "pdf-header";
+          header.innerHTML = `
+            <img src="${logo}" class="pdf-logo" />
+            <div class="pdf-title">
+              <h2 style="margin:0; color:black;">${title}</h2>
+              <p style="margin:5px 0 0 0; color:black;">${subtitle}</p>
+            </div>
+            <div style="width: 80px;"></div>
+          `;
+
+          const content = document.getElementById("member-report-content");
+          if (content) content.insertBefore(header, content.firstChild);
+        },
+        logoBase64,
+        headerTitle,
+        headerSubtitle,
+      );
 
       const pdf = await page.pdf({
         format: "A4",

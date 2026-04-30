@@ -342,7 +342,7 @@ export default function MemberDetails() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(`/api/members/${member.id}/pdf`, "_blank")}
+            onClick={() => window.open(`/api/members/${member.id}/pdf?lang=${language}`, "_blank")}
             data-testid="button-pdf"
           >
             <FileDown className="me-2 h-4 w-4" />

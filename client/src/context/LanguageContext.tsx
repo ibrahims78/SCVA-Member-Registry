@@ -78,13 +78,34 @@ const translations: Record<string, Record<Language, string>> = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const LANG_STORAGE_KEY = 'scva.lang';
+
+function readInitialLanguage(): Language {
+  if (typeof window === 'undefined') return 'ar';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('lang');
+    if (fromUrl === 'ar' || fromUrl === 'en') return fromUrl;
+    const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
+    if (stored === 'ar' || stored === 'en') return stored;
+  } catch {
+    /* ignore */
+  }
+  return 'ar';
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('ar');
+  const [language, setLanguage] = useState<Language>(readInitialLanguage);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
 
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = direction;
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, language);
+    } catch {
+      /* ignore */
+    }
   }, [language, direction]);
 
   const t = (key: string) => {
