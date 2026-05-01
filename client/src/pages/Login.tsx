@@ -126,39 +126,48 @@ export default function Login() {
     >
       {/* ====== Left (RTL: Right) — Brand panel ====== */}
       <aside
-        className="relative hidden lg:flex flex-col justify-between p-10 bg-brand-gradient text-primary-foreground overflow-hidden"
+        className="relative hidden lg:flex flex-col justify-between p-10 bg-brand-gradient overflow-hidden"
         aria-hidden="true"
       >
-        <div className="absolute inset-0 bg-grid-soft opacity-[0.06]" />
+        {/* Decorative dot-grid overlay */}
+        <div className="absolute inset-0 bg-grid-soft opacity-[0.07]" />
+
+        {/* Subtle radial highlight at top-center */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10">
           <BrandMark variant="full" size="lg" productLabel="Members" />
         </div>
 
         <div className="relative z-10 space-y-8 max-w-md">
-          <h2 className={cn("text-3xl font-bold leading-tight", isAr ? "tracking-tight" : "")}>
+          <h2
+            className={cn(
+              "text-3xl font-bold leading-tight text-white drop-shadow-sm",
+              isAr ? "tracking-tight" : "",
+            )}
+          >
             {isAr ? BRAND.fullNameAr : BRAND.fullNameEn}
           </h2>
-          <p className="text-base text-primary-foreground/85 leading-relaxed">
+          <p className="text-base text-white/80 leading-relaxed">
             {isAr ? BRAND.taglineAr : BRAND.taglineEn}
           </p>
 
           <ul className="space-y-5 stagger-fade-in">
             {valueProps.map((p) => (
               <li key={p.title} className="flex gap-3">
-                <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-foreground/15 flex items-center justify-center backdrop-blur-sm">
-                  <p.icon className="h-5 w-5" aria-hidden="true" />
+                <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 border border-white/25 flex items-center justify-center backdrop-blur-sm shadow-sm">
+                  <p.icon className="h-5 w-5 text-white" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-semibold">{p.title}</p>
-                  <p className="text-sm text-primary-foreground/75 mt-0.5">{p.body}</p>
+                  <p className="font-semibold text-white">{p.title}</p>
+                  <p className="text-sm text-white/70 mt-0.5">{p.body}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="relative z-10 text-xs text-primary-foreground/60">
+        <div className="relative z-10 text-xs text-white/50">
           © {BRAND.year} — {isAr ? BRAND.fullNameAr : BRAND.fullNameEn}
         </div>
       </aside>
