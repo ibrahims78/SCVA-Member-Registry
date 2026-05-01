@@ -1,5 +1,46 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "OeAUNZnrbgF8K9cO5gqeL"
+uri = "file://video_project/assets/bg1_intro.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6GFqOK68Dh9wtRUqIwv6r"
+uri = "file://video_project/assets/bg2_devices.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "UZViNoCQroHZrdzOQ7X-u"
+uri = "file://video_project/assets/bg3_members.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6Z1ZYfxHNz-QDOvPtnhgd"
+uri = "file://video_project/assets/bg4_reports.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "StSk4AoAm7nSWaKADQu0-"
+uri = "file://video_project/assets/bg5_security.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_OYY8jDmdElvZXiZEYkA3"
+uri = "file://video_project/assets/bg6_bilingual.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kpTnKGgNCXr51XwC-2Q2p"
+uri = "file://video_project/assets/bg7_contact.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "ZIQkqlzVJRceQY5klZ0DB"
@@ -66,3 +107,9 @@ id = "rlvuzI-Ez0hADIWSgzMlr"
 uri = "file://ملفات_للتحميل/test_subscriptions_EN.xlsx"
 type = "table"
 title = "test_subscriptions_EN.xlsx — 340 اشتراكاً تجريبيًا"
+
+[[outputs]]
+id = "p6VaTXwJMigLhUr55wAyr"
+uri = "file://video_project/output/SCVA_Members_Promo.mp4"
+type = "video"
+title = "SCVA Members — الفيديو الترويجي"

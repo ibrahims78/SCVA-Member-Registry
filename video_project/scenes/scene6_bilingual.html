@@ -1,0 +1,104 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 80% 80% at 25% 50%, #FF006E22 0%, transparent 60%),
+  radial-gradient(ellipse 80% 80% at 75% 50%, #00D4FF22 0%, transparent 60%),
+  linear-gradient(135deg,#070E1C,#0D1020,#070E1C);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg6_bilingual.png') center/cover;opacity:0.28;}
+.divider-line{position:absolute;top:0;bottom:0;left:50%;width:2px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.15),transparent);}
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.06) 1px,transparent 1px);background-size:40px 40px;}
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#FF006E,#FFB700,#00FF87,#00D4FF,#7B2FFF);}
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7B2FFF,#00D4FF,#00FF87,#FFB700,#FF006E);}
+.corner{position:absolute;width:100px;height:100px;}
+.corner.tl{top:20px;left:20px;border-top:2px solid #FF006E77;border-left:2px solid #FF006E77;}
+.corner.tr{top:20px;right:20px;border-top:2px solid #00D4FF77;border-right:2px solid #00D4FF77;}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid #FFB70077;border-left:2px solid #FFB70077;}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid #7B2FFF77;border-right:2px solid #7B2FFF77;}
+/* Layout: two halves */
+.half{position:absolute;top:0;bottom:0;width:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 70px;gap:36px;}
+.half.left{left:0;}
+.half.right{right:0;}
+.lang-badge{font-size:13px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;padding:8px 20px;border-radius:100px;margin-bottom:10px;}
+.lang-badge.ar{background:rgba(255,0,110,0.18);color:#FF006E;border:1.5px solid rgba(255,0,110,0.40);}
+.lang-badge.en{background:rgba(0,212,255,0.18);color:#00D4FF;border:1.5px solid rgba(0,212,255,0.40);}
+/* Phone mockup for each half */
+.phone-demo{width:300px;height:500px;background:#08111E;border-radius:36px;overflow:hidden;position:relative;}
+.half.left .phone-demo{border:2.5px solid rgba(255,0,110,0.40);box-shadow:0 0 60px rgba(255,0,110,0.25),0 30px 60px rgba(0,0,0,0.50);}
+.half.right .phone-demo{border:2.5px solid rgba(0,212,255,0.40);box-shadow:0 0 60px rgba(0,212,255,0.25),0 30px 60px rgba(0,0,0,0.50);}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:70px;height:18px;background:#000;border-radius:12px;z-index:2;}
+/* AR UI */
+.ar-ui{width:100%;height:100%;background:#0a1628;padding:40px 16px 20px;display:flex;flex-direction:column;gap:0;}
+.ar-header{font-size:16px;font-weight:800;color:#fff;direction:rtl;text-align:right;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;}
+.ar-field{direction:rtl;margin-bottom:10px;}
+.ar-label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.40);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;}
+.ar-value{font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);}
+.ar-btn{margin-top:auto;background:linear-gradient(135deg,#FF006E,#ff4d9e);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;direction:rtl;text-align:center;cursor:pointer;}
+/* EN UI */
+.en-ui{width:100%;height:100%;background:#0a1628;padding:40px 16px 20px;display:flex;flex-direction:column;gap:0;}
+.en-header{font-size:14px;font-weight:800;color:#fff;text-align:left;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;}
+.en-field{margin-bottom:10px;}
+.en-label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.40);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;}
+.en-value{font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);}
+.en-btn{margin-top:auto;background:linear-gradient(135deg,#00D4FF,#0099cc);color:#070E1C;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;text-align:center;cursor:pointer;}
+/* mode cards below */
+.mode-row{display:flex;gap:16px;}
+.mode-card{flex:1;border-radius:14px;padding:16px 20px;text-align:center;}
+.mode-card.dark-mode{background:#0a1628;border:1px solid rgba(255,255,255,0.12);}
+.mode-card.light-mode{background:#f0f6fa;border:1px solid rgba(9,107,143,0.25);}
+.mode-icon{font-size:28px;margin-bottom:6px;}
+.mode-label-dark{font-size:14px;font-weight:700;color:#fff;}
+.mode-label-light{font-size:14px;font-weight:700;color:#0a1628;}
+/* center badge */
+.center-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;background:linear-gradient(135deg,#FF006E,#7B2FFF,#00D4FF);padding:3px;border-radius:50%;}
+.center-badge-inner{background:#070E1C;border-radius:50%;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+</style></head><body>
+<div class="bg"></div><div class="bg-img"></div><div class="divider-line"></div><div class="grid"></div>
+<div class="topbar"></div><div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="center-badge"><div class="center-badge-inner">🌐</div></div>
+
+<!-- Arabic side -->
+<div class="half left">
+  <div class="lang-badge ar">🇸🇦 &nbsp;العربية · RTL</div>
+  <div class="phone-demo">
+    <div class="notch"></div>
+    <div class="ar-ui">
+      <div class="ar-header">بيانات العضو</div>
+      <div class="ar-field"><div class="ar-label">الاسم الكامل</div><div class="ar-value">د. أحمد محمد سليم</div></div>
+      <div class="ar-field"><div class="ar-label">الاختصاص</div><div class="ar-value">قلبية داخلية</div></div>
+      <div class="ar-field"><div class="ar-label">المحافظة</div><div class="ar-value">دمشق</div></div>
+      <div class="ar-field"><div class="ar-label">نوع العضوية</div><div class="ar-value">أصيل</div></div>
+      <div class="ar-field"><div class="ar-label">رقم ESC</div><div class="ar-value">ESC-SY-100001</div></div>
+      <div class="ar-btn">تصدير تقرير PDF</div>
+    </div>
+  </div>
+  <div class="mode-row">
+    <div class="mode-card dark-mode"><div class="mode-icon">🌙</div><div class="mode-label-dark">وضع ليلي</div></div>
+    <div class="mode-card light-mode"><div class="mode-icon">☀️</div><div class="mode-label-light">وضع نهاري</div></div>
+  </div>
+</div>
+
+<!-- English side -->
+<div class="half right">
+  <div class="lang-badge en">🇬🇧 &nbsp;English · LTR</div>
+  <div class="phone-demo">
+    <div class="notch"></div>
+    <div class="en-ui">
+      <div class="en-header">Member Details</div>
+      <div class="en-field"><div class="en-label">Full Name</div><div class="en-value">Dr. Ahmad Mohammad Salim</div></div>
+      <div class="en-field"><div class="en-label">Specialty</div><div class="en-value">Cardiology</div></div>
+      <div class="en-field"><div class="en-label">City</div><div class="en-value">Damascus</div></div>
+      <div class="en-field"><div class="en-label">Membership</div><div class="en-value">Original</div></div>
+      <div class="en-field"><div class="en-label">ESC ID</div><div class="en-value">ESC-SY-100001</div></div>
+      <div class="en-btn">Export PDF Report</div>
+    </div>
+  </div>
+  <div class="mode-row">
+    <div class="mode-card dark-mode"><div class="mode-icon">🌙</div><div class="mode-label-dark">Dark Mode</div></div>
+    <div class="mode-card light-mode"><div class="mode-icon">☀️</div><div class="mode-label-light">Light Mode</div></div>
+  </div>
+</div>
+</body></html>

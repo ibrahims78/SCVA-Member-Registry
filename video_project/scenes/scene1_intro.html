@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 120% 80% at 20% -10%, #7B2FFF44 0%, transparent 55%),
+  radial-gradient(ellipse 100% 70% at 80% 110%, #00D4FF33 0%, transparent 55%),
+  radial-gradient(ellipse 80% 60% at 50% 50%, #FF006E11 0%, transparent 60%),
+  linear-gradient(135deg, #070E1C 0%, #0D1B35 40%, #091A30 100%);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg1_intro.png') center/cover;opacity:0.35;}
+.particles{position:absolute;inset:0;}
+.p{position:absolute;border-radius:50%;}
+.p1{width:500px;height:500px;background:radial-gradient(circle,#00D4FF18,transparent 70%);top:-100px;left:-80px;}
+.p2{width:400px;height:400px;background:radial-gradient(circle,#7B2FFF22,transparent 70%);bottom:-80px;right:-60px;}
+.p3{width:300px;height:300px;background:radial-gradient(circle,#FF006E15,transparent 70%);top:200px;right:300px;}
+.p4{width:200px;height:200px;background:radial-gradient(circle,#FFB70022,transparent 70%);bottom:200px;left:400px;}
+/* grid */
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(0,212,255,0.12) 1px,transparent 1px);background-size:48px 48px;opacity:0.5;}
+/* content */
+.content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
+.logo-ring{width:160px;height:160px;border-radius:36px;border:2px solid #00D4FF55;background:linear-gradient(135deg,#00D4FF18,#7B2FFF18);display:flex;align-items:center;justify-content:center;margin-bottom:40px;box-shadow:0 0 80px #00D4FF44,0 0 160px #7B2FFF22,inset 0 0 40px #00D4FF11;}
+.logo-ring img{width:110px;height:110px;object-fit:contain;}
+.tag{font-size:16px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#00D4FF;margin-bottom:20px;display:flex;align-items:center;gap:14px;}
+.tag::before,.tag::after{content:'';width:60px;height:1.5px;background:linear-gradient(90deg,transparent,#00D4FF,transparent);}
+.title{font-size:72px;font-weight:900;text-align:center;line-height:1.15;color:#fff;text-shadow:0 0 80px #00D4FF66;margin-bottom:16px;direction:rtl;}
+.title span{background:linear-gradient(90deg,#00F5FF,#00D4FF,#7B2FFF,#FF006E,#FFB700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.subtitle{font-size:28px;font-weight:400;color:rgba(255,255,255,0.65);text-align:center;direction:rtl;margin-bottom:52px;}
+.pills{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+.pill{background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.35);color:#00D4FF;padding:10px 24px;border-radius:100px;font-size:16px;font-weight:700;direction:rtl;}
+/* top bar */
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#7B2FFF,#00D4FF,#00FF87,#FFB700,#FF006E,#7B2FFF);}
+/* bottom */
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#FF006E,#7B2FFF,#00D4FF,#00FF87);}
+.corner{position:absolute;width:120px;height:120px;opacity:0.5;}
+.corner.tl{top:20px;left:20px;border-top:2px solid #00D4FF;border-left:2px solid #00D4FF;}
+.corner.tr{top:20px;right:20px;border-top:2px solid #7B2FFF;border-right:2px solid #7B2FFF;}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid #00FF87;border-left:2px solid #00FF87;}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid #FFB700;border-right:2px solid #FFB700;}
+</style></head><body>
+<div class="bg"></div>
+<div class="bg-img"></div>
+<div class="particles"><div class="p p1"></div><div class="p p2"></div><div class="p p3"></div><div class="p p4"></div></div>
+<div class="grid"></div>
+<div class="topbar"></div>
+<div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="content">
+  <div class="logo-ring"><img src="file:///home/runner/workspace/client/src/assets/logo.jpg" alt=""/></div>
+  <div class="tag">SCVA · نظام رقمي متكامل · 2025</div>
+  <h1 class="title">نظام إدارة الأعضاء<br/><span>الرابطة السورية لأمراض وجراحة القلب</span></h1>
+  <p class="subtitle">منصّة احترافية لإدارة عضوية الأطباء — بأمان وكفاءة وسهولة</p>
+  <div class="pills">
+    <span class="pill">✦ آمن ومشفّر</span>
+    <span class="pill">✦ ثنائي اللغة</span>
+    <span class="pill">✦ سحابي 24/7</span>
+    <span class="pill">✦ تصدير فوري</span>
+  </div>
+</div>
+</body></html>

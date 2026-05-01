@@ -1,0 +1,77 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 100% 80% at 50% 50%, #00FF8718 0%, transparent 60%),
+  radial-gradient(ellipse 80% 60% at 10% 10%, #00D4FF22 0%, transparent 50%),
+  radial-gradient(ellipse 80% 60% at 90% 90%, #7B2FFF22 0%, transparent 50%),
+  linear-gradient(135deg,#040A07,#070E1C,#040A07);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg5_security.png') center/cover;opacity:0.28;}
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(0,255,135,0.08) 1px,transparent 1px);background-size:44px 44px;}
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#00FF87,#00D4FF,#7B2FFF,#FF006E,#00FF87);}
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7B2FFF,#00FF87,#00D4FF);}
+/* Shield center glow */
+.shield-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,255,135,0.12) 0%,transparent 70%);pointer-events:none;}
+.corner{position:absolute;width:100px;height:100px;}
+.corner.tl{top:20px;left:20px;border-top:2px solid #00FF8777;border-left:2px solid #00FF8777;}
+.corner.tr{top:20px;right:20px;border-top:2px solid #00D4FF77;border-right:2px solid #00D4FF77;}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid #7B2FFF77;border-left:2px solid #7B2FFF77;}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid #00FF8777;border-right:2px solid #00FF8777;}
+/* Layout */
+.layout{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;padding:60px;}
+.top-content{display:flex;align-items:center;gap:50px;margin-bottom:52px;direction:rtl;}
+.shield-icon{width:130px;height:130px;border-radius:30px;background:linear-gradient(135deg,rgba(0,255,135,0.20),rgba(0,212,255,0.20));border:2px solid rgba(0,255,135,0.40);display:flex;align-items:center;justify-content:center;font-size:60px;box-shadow:0 0 60px rgba(0,255,135,0.30),0 0 120px rgba(0,255,135,0.15);}
+.top-text{}
+.section-tag{font-size:14px;font-weight:700;letter-spacing:0.15em;color:#00FF87;margin-bottom:12px;}
+.title{font-size:62px;font-weight:900;color:#fff;text-shadow:0 0 40px #00FF8755;line-height:1.15;}
+.title span{background:linear-gradient(90deg,#00FF87,#00D4FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+/* Security cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;width:100%;}
+.sec-card{background:rgba(0,255,135,0.06);border:1px solid rgba(0,255,135,0.18);border-radius:18px;padding:28px 22px;text-align:center;direction:rtl;position:relative;overflow:hidden;}
+.sec-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00FF87,transparent);}
+.sec-icon{font-size:36px;margin-bottom:14px;}
+.sec-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;}
+.sec-desc{font-size:13.5px;color:rgba(255,255,255,0.55);line-height:1.65;}
+.sec-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,255,135,0.12);border:1px solid rgba(0,255,135,0.28);color:#00FF87;font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px;margin-top:12px;}
+</style></head><body>
+<div class="bg"></div><div class="bg-img"></div><div class="grid"></div><div class="shield-glow"></div>
+<div class="topbar"></div><div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="layout">
+  <div class="top-content">
+    <div class="shield-icon">🛡️</div>
+    <div class="top-text">
+      <div class="section-tag">◆ الأمان والخصوصية</div>
+      <h2 class="title">بياناتكم في أمان<br/><span>تام ومضمون</span></h2>
+    </div>
+  </div>
+  <div class="cards">
+    <div class="sec-card">
+      <div class="sec-icon">🔐</div>
+      <div class="sec-title">تشفير كلمات المرور</div>
+      <div class="sec-desc">خوارزمية bcrypt المتطورة — لا يمكن كشف كلمات المرور حتى للمطوّر</div>
+      <div class="sec-badge">✓ bcrypt</div>
+    </div>
+    <div class="sec-card">
+      <div class="sec-icon">🔒</div>
+      <div class="sec-title">حماية CSRF</div>
+      <div class="sec-desc">حماية من هجمات التزوير عبر الطلبات — معيار أمان المواقع الاحترافية</div>
+      <div class="sec-badge">✓ مفعّل</div>
+    </div>
+    <div class="sec-card">
+      <div class="sec-icon">👤</div>
+      <div class="sec-title">صلاحيات مستويين</div>
+      <div class="sec-desc">مدير بصلاحية كاملة وموظف بصلاحية محدودة — تحكّم دقيق بالوصول</div>
+      <div class="sec-badge">✓ Admin / Staff</div>
+    </div>
+    <div class="sec-card">
+      <div class="sec-icon">⚡</div>
+      <div class="sec-title">جلسات آمنة مشفّرة</div>
+      <div class="sec-desc">كل جلسة تسجيل دخول مؤمّنة بمفتاح تشفير فريد — تسجيل خروج تلقائي</div>
+      <div class="sec-badge">✓ Sessions</div>
+    </div>
+  </div>
+</div>
+</body></html>

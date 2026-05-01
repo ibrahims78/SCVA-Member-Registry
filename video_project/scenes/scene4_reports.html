@@ -1,0 +1,88 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 80% 70% at 110% 20%, #FFB70033 0%, transparent 55%),
+  radial-gradient(ellipse 100% 80% at -10% 80%, #00D4FF22 0%, transparent 55%),
+  linear-gradient(135deg,#0A0D07,#0D1B2A,#070E1C);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg4_reports.png') center/cover;opacity:0.28;}
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,183,0,0.08) 1px,transparent 1px);background-size:40px 40px;}
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#FFB700,#FF006E,#7B2FFF,#00D4FF);}
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00D4FF,#FFB700,#FF006E);}
+.corner{position:absolute;width:100px;height:100px;}
+.corner.tl{top:20px;left:20px;border-top:2px solid #FFB70077;border-left:2px solid #FFB70077;}
+.corner.tr{top:20px;right:20px;border-top:2px solid #FF006E77;border-right:2px solid #FF006E77;}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid #00D4FF77;border-left:2px solid #00D4FF77;}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid #7B2FFF77;border-right:2px solid #7B2FFF77;}
+/* Layout: text left, 3 cards right */
+.layout{position:absolute;inset:0;display:flex;align-items:center;padding:60px 80px;gap:70px;}
+.left{flex:0 0 560px;direction:rtl;}
+.section-tag{font-size:14px;font-weight:700;letter-spacing:0.15em;color:#FFB700;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.section-tag::after{content:'';flex:1;height:1.5px;background:linear-gradient(90deg,#FFB700,transparent);}
+.title{font-size:58px;font-weight:900;line-height:1.2;color:#fff;margin-bottom:16px;text-shadow:0 0 40px #FFB70055;}
+.title span{color:#FFB700;}
+.desc{font-size:20px;color:rgba(255,255,255,0.60);line-height:1.8;margin-bottom:36px;}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.stat-card{background:rgba(255,183,0,0.08);border:1px solid rgba(255,183,0,0.22);border-radius:14px;padding:20px;text-align:center;}
+.stat-num{font-size:40px;font-weight:900;background:linear-gradient(90deg,#FFB700,#FF006E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-label{font-size:14px;color:rgba(255,255,255,0.55);margin-top:4px;}
+/* Right: export cards */
+.right{flex:1;display:flex;flex-direction:column;gap:20px;}
+.export-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:28px 32px;display:flex;align-items:center;gap:24px;transition:0.2s;}
+.export-card.pdf{border-color:rgba(255,0,110,0.30);background:rgba(255,0,110,0.07);box-shadow:0 0 30px rgba(255,0,110,0.12);}
+.export-card.excel{border-color:rgba(0,255,135,0.30);background:rgba(0,255,135,0.07);box-shadow:0 0 30px rgba(0,255,135,0.12);}
+.export-card.word{border-color:rgba(0,212,255,0.30);background:rgba(0,212,255,0.07);box-shadow:0 0 30px rgba(0,212,255,0.12);}
+.export-icon{font-size:42px;flex-shrink:0;}
+.export-info{direction:rtl;flex:1;}
+.export-title{font-size:24px;font-weight:800;color:#fff;margin-bottom:6px;}
+.export-desc{font-size:15px;color:rgba(255,255,255,0.55);}
+.export-btn{padding:10px 22px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;}
+.export-card.pdf .export-btn{background:linear-gradient(135deg,#FF006E,#ff4d9e);color:#fff;}
+.export-card.excel .export-btn{background:linear-gradient(135deg,#00FF87,#00cc6a);color:#070E1C;}
+.export-card.word .export-btn{background:linear-gradient(135deg,#00D4FF,#0099cc);color:#070E1C;}
+</style></head><body>
+<div class="bg"></div><div class="bg-img"></div><div class="grid"></div>
+<div class="topbar"></div><div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="layout">
+  <div class="left">
+    <div class="section-tag">التقارير والتصدير</div>
+    <h2 class="title">تقارير<br/><span>احترافية</span><br/>بضغطة زر</h2>
+    <p class="desc">استخرج بيانات أي عضو أو قائمة كاملة بعدة صيغ جاهزة للنشر والأرشفة.</p>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num">150+</div><div class="stat-label">عضو مسجّل</div></div>
+      <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">صيغ تصدير</div></div>
+      <div class="stat-card"><div class="stat-num">491</div><div class="stat-label">اشتراك مسجّل</div></div>
+      <div class="stat-card"><div class="stat-num">∞</div><div class="stat-label">تصدير بلا حدود</div></div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="export-card pdf">
+      <div class="export-icon">📄</div>
+      <div class="export-info">
+        <div class="export-title">تقرير PDF مؤسسي</div>
+        <div class="export-desc">تقرير كامل لبيانات العضو مع شعار الرابطة — جاهز للطباعة والأرشفة الرسمية</div>
+      </div>
+      <button class="export-btn">تصدير PDF</button>
+    </div>
+    <div class="export-card excel">
+      <div class="export-icon">📊</div>
+      <div class="export-info">
+        <div class="export-title">ملف Excel شامل</div>
+        <div class="export-desc">قائمة الأعضاء كاملةً بجميع الحقول — جاهزة للتحليل والأرشفة الرقمية</div>
+      </div>
+      <button class="export-btn">تصدير Excel</button>
+    </div>
+    <div class="export-card word">
+      <div class="export-icon">📑</div>
+      <div class="export-info">
+        <div class="export-title">وثيقة Word قابلة للتعديل</div>
+        <div class="export-desc">بيانات العضو بصيغة Word — مناسبة للمراسلات الرسمية والوثائق المؤسسية</div>
+      </div>
+      <button class="export-btn">تصدير Word</button>
+    </div>
+  </div>
+</div>
+</body></html>

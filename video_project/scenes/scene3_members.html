@@ -1,0 +1,99 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 100% 80% at -10% 50%, #7B2FFF33 0%, transparent 55%),
+  radial-gradient(ellipse 80% 70% at 110% 50%, #FF006E22 0%, transparent 55%),
+  linear-gradient(135deg,#07100A,#0D1B2A,#070E1C);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg3_members.png') center/cover;opacity:0.30;}
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(123,47,255,0.10) 1px,transparent 1px);background-size:40px 40px;}
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#7B2FFF,#FF006E,#FFB700,#00FF87);}
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00FF87,#00D4FF,#7B2FFF);}
+.corner{position:absolute;width:100px;height:100px;}
+.corner.tl{top:20px;left:20px;border-top:2px solid #7B2FFF88;border-left:2px solid #7B2FFF88;}
+.corner.tr{top:20px;right:20px;border-top:2px solid #FF006E88;border-right:2px solid #FF006E88;}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid #00FF8788;border-left:2px solid #00FF8788;}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid #FFB70088;border-right:2px solid #FFB70088;}
+/* Layout */
+.layout{position:absolute;inset:0;display:flex;align-items:center;padding:60px 80px;gap:80px;}
+/* Left: text */
+.left{flex:0 0 620px;display:flex;flex-direction:column;gap:0;direction:rtl;}
+.section-tag{font-size:14px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#7B2FFF;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.section-tag::after{content:'';flex:1;height:1.5px;background:linear-gradient(90deg,#7B2FFF,transparent);}
+.title{font-size:56px;font-weight:900;line-height:1.2;color:#fff;margin-bottom:18px;text-shadow:0 0 40px #7B2FFF55;}
+.title span{color:#7B2FFF;}
+.desc{font-size:20px;color:rgba(255,255,255,0.65);line-height:1.8;margin-bottom:36px;}
+.features{display:flex;flex-direction:column;gap:14px;}
+.feat{display:flex;align-items:center;gap:14px;background:rgba(123,47,255,0.10);border:1px solid rgba(123,47,255,0.25);border-radius:12px;padding:14px 18px;}
+.feat-icon{width:36px;height:36px;border-radius:8px;background:rgba(123,47,255,0.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.feat-text{font-size:17px;font-weight:600;color:rgba(255,255,255,0.9);}
+/* Right: screen mockup */
+.right{flex:1;display:flex;align-items:center;justify-content:center;}
+.laptop-wrap{position:relative;width:860px;height:560px;}
+.laptop-screen{position:absolute;top:0;left:0;right:0;bottom:60px;background:#0a1628;border-radius:16px 16px 0 0;border:2px solid rgba(0,212,255,0.30);overflow:hidden;box-shadow:0 0 80px #7B2FFF44,0 30px 80px rgba(0,0,0,0.6);}
+.laptop-screen img{width:100%;height:100%;object-fit:cover;object-position:top;}
+.laptop-base{position:absolute;bottom:0;left:-40px;right:-40px;height:60px;background:linear-gradient(180deg,#1a1a2e,#0f0f1a);border-radius:0 0 24px 24px;border:1px solid rgba(255,255,255,0.08);}
+.laptop-base::after{content:'';position:absolute;top:14px;left:50%;transform:translateX(-50%);width:80px;height:6px;background:rgba(255,255,255,0.10);border-radius:4px;}
+/* glow ring */
+.glow-ring{position:absolute;top:-20px;left:-20px;right:-20px;bottom:40px;border-radius:20px;border:1px solid rgba(123,47,255,0.20);box-shadow:0 0 60px rgba(123,47,255,0.25);}
+/* members ui mockup */
+.mock-ui{width:100%;height:100%;background:#0a1628;padding:20px;display:flex;flex-direction:column;gap:16px;}
+.mock-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.mock-title-text{font-size:20px;font-weight:800;color:#fff;direction:rtl;}
+.mock-search{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:8px;padding:8px 16px;font-size:14px;color:rgba(255,255,255,0.4);direction:rtl;display:flex;align-items:center;gap:8px;}
+.mock-table{flex:1;overflow:hidden;}
+.mock-row{display:grid;grid-template-columns:40px 1fr 160px 140px 100px 80px;gap:12px;padding:12px 16px;align-items:center;direction:rtl;border-radius:8px;margin-bottom:4px;}
+.mock-row.head{background:rgba(123,47,255,0.12);border:1px solid rgba(123,47,255,0.20);}
+.mock-row.head span{font-size:12px;font-weight:700;color:#7B2FFF;letter-spacing:0.05em;}
+.mock-row.data{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);}
+.mock-row.data:nth-child(odd){background:rgba(255,255,255,0.05);}
+.mock-row.data span{font-size:13px;color:rgba(255,255,255,0.75);}
+.mock-row.data span.name{color:#fff;font-weight:700;}
+.badge-pill{padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;}
+.badge-teal{background:rgba(0,212,255,0.15);color:#00D4FF;border:1px solid rgba(0,212,255,0.30);}
+.badge-purple{background:rgba(123,47,255,0.15);color:#a78bfa;border:1px solid rgba(123,47,255,0.30);}
+.badge-green{background:rgba(0,255,135,0.12);color:#00FF87;border:1px solid rgba(0,255,135,0.25);}
+</style></head><body>
+<div class="bg"></div><div class="bg-img"></div><div class="grid"></div>
+<div class="topbar"></div><div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="layout">
+  <div class="right">
+    <div class="laptop-wrap">
+      <div class="glow-ring"></div>
+      <div class="laptop-screen">
+        <div class="mock-ui">
+          <div class="mock-header">
+            <div class="mock-title-text">قائمة الأعضاء</div>
+            <div class="mock-search">🔍 &nbsp;بحث بالاسم أو الاختصاص...</div>
+          </div>
+          <div class="mock-table">
+            <div class="mock-row head"><span>#</span><span>الاسم</span><span>الاختصاص</span><span>المحافظة</span><span>النوع</span><span>الاشتراك</span></div>
+            <div class="mock-row data"><span>١</span><span class="name">د. أحمد سليم</span><span>قلبية داخلية</span><span>دمشق</span><span><div class="badge-pill badge-teal">أصيل</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٢</span><span class="name">د. سمر خليل</span><span>جراحة قلب</span><span>حلب</span><span><div class="badge-pill badge-teal">أصيل</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٣</span><span class="name">د. محمد عيسى</span><span>قلبية داخلية</span><span>حمص</span><span><div class="badge-pill badge-purple">مشارك</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٤</span><span class="name">د. رنا حسون</span><span>جراحة قلب</span><span>دمشق</span><span><div class="badge-pill badge-teal">أصيل</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٥</span><span class="name">د. وليد ناصر</span><span>قلبية داخلية</span><span>حماة</span><span><div class="badge-pill badge-teal">أصيل</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٦</span><span class="name">د. هالة يوسف</span><span>جراحة قلب</span><span>حلب</span><span><div class="badge-pill badge-purple">مشارك</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+            <div class="mock-row data"><span>٧</span><span class="name">د. كريم جبور</span><span>قلبية داخلية</span><span>اللاذقية</span><span><div class="badge-pill badge-teal">أصيل</div></span><span><div class="badge-pill badge-green">✓</div></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="laptop-base"></div>
+    </div>
+  </div>
+  <div class="left">
+    <div class="section-tag">إدارة الأعضاء</div>
+    <h2 class="title">سجلّ كامل<br/>لكل <span>عضو</span></h2>
+    <p class="desc">أضف وعدّل وابحث في بيانات الأعضاء بسهولة فائقة — كل المعلومات في متناول يدك.</p>
+    <div class="features">
+      <div class="feat"><div class="feat-icon">👤</div><div class="feat-text">بيانات شخصية ومهنية كاملة</div></div>
+      <div class="feat"><div class="feat-icon">🔍</div><div class="feat-text">بحث وتصفية فورية متقدمة</div></div>
+      <div class="feat"><div class="feat-icon">🆔</div><div class="feat-text">رقم ESC الدولي لكل عضو</div></div>
+      <div class="feat"><div class="feat-icon">📥</div><div class="feat-text">استيراد دفعي من Excel</div></div>
+    </div>
+  </div>
+</div>
+</body></html>

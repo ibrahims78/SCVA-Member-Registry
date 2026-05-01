@@ -1,0 +1,88 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1920px;height:1080px;overflow:hidden;font-family:'Cairo',sans-serif;background:#070E1C;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+.bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse 90% 70% at 50% 50%, #096B8F22 0%, transparent 65%),
+  radial-gradient(ellipse 70% 60% at 20% 20%, #7B2FFF22 0%, transparent 55%),
+  radial-gradient(ellipse 70% 60% at 80% 80%, #FFB70022 0%, transparent 55%),
+  linear-gradient(135deg,#070E1C,#0D1B35,#070E1C);}
+.bg-img{position:absolute;inset:0;background:url('file:///home/runner/workspace/video_project/assets/bg7_contact.png') center/cover;opacity:0.30;}
+.grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(0,212,255,0.07) 1px,transparent 1px);background-size:48px 48px;}
+.topbar{position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#7B2FFF,#FF006E,#FFB700,#00FF87,#00D4FF,#7B2FFF);}
+.bottombar{position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00D4FF,#FFB700,#7B2FFF);}
+.corner{position:absolute;width:120px;height:120px;}
+.corner.tl{top:20px;left:20px;border-top:2px solid rgba(123,47,255,0.5);border-left:2px solid rgba(123,47,255,0.5);}
+.corner.tr{top:20px;right:20px;border-top:2px solid rgba(0,212,255,0.5);border-right:2px solid rgba(0,212,255,0.5);}
+.corner.bl{bottom:20px;left:20px;border-bottom:2px solid rgba(255,183,0,0.5);border-left:2px solid rgba(255,183,0,0.5);}
+.corner.br{bottom:20px;right:20px;border-bottom:2px solid rgba(0,255,135,0.5);border-right:2px solid rgba(0,255,135,0.5);}
+/* glow center */
+.glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(9,107,143,0.18) 0%,transparent 70%);pointer-events:none;}
+/* layout */
+.layout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:60px;}
+/* logo + title */
+.logo-section{display:flex;flex-direction:column;align-items:center;gap:20px;margin-bottom:36px;}
+.logo-wrap{width:120px;height:120px;border-radius:28px;background:linear-gradient(135deg,rgba(9,107,143,0.25),rgba(123,47,255,0.20));border:2px solid rgba(0,212,255,0.40);display:flex;align-items:center;justify-content:center;box-shadow:0 0 80px rgba(0,212,255,0.35),0 0 160px rgba(123,47,255,0.20);}
+.logo-wrap img{width:88px;height:88px;object-fit:contain;}
+.outro-tag{font-size:14px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#00D4FF;}
+.outro-title{font-size:52px;font-weight:900;text-align:center;color:#fff;direction:rtl;text-shadow:0 0 60px rgba(0,212,255,0.40);}
+.outro-title span{background:linear-gradient(90deg,#00F5FF,#7B2FFF,#FFB700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+/* contact card */
+.contact-card{background:rgba(255,255,255,0.04);border:1px solid rgba(0,212,255,0.25);border-radius:28px;padding:40px 60px;display:flex;align-items:center;gap:60px;box-shadow:0 0 80px rgba(0,212,255,0.12),0 40px 80px rgba(0,0,0,0.40);direction:rtl;max-width:1100px;width:100%;}
+.dev-avatar{width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#096B8F,#7B2FFF);display:flex;align-items:center;justify-content:center;font-size:48px;flex-shrink:0;box-shadow:0 0 50px rgba(9,107,143,0.40);}
+.dev-info{flex:1;}
+.dev-role{font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#00D4FF;margin-bottom:8px;}
+.dev-name{font-size:44px;font-weight:900;color:#fff;margin-bottom:4px;}
+.dev-sub{font-size:18px;color:rgba(255,255,255,0.50);}
+.contact-links{display:flex;flex-direction:column;gap:14px;flex-shrink:0;}
+.clink{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px 22px;min-width:340px;}
+.clink.phone{border-color:rgba(0,212,255,0.30);background:rgba(0,212,255,0.08);box-shadow:0 0 20px rgba(0,212,255,0.10);}
+.clink.wa{border-color:rgba(37,211,102,0.35);background:rgba(37,211,102,0.08);box-shadow:0 0 20px rgba(37,211,102,0.10);}
+.clink-icon{font-size:32px;flex-shrink:0;}
+.clink-info{}
+.clink-label{font-size:12px;font-weight:600;color:rgba(255,255,255,0.40);direction:rtl;}
+.clink-value{font-size:22px;font-weight:800;color:#fff;direction:ltr;letter-spacing:0.04em;}
+/* divider vertical */
+.vdiv{width:1px;height:120px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent);flex-shrink:0;}
+/* bottom tagline */
+.tagline{margin-top:36px;font-size:20px;color:rgba(255,255,255,0.40);direction:rtl;text-align:center;}
+.tagline strong{color:#00D4FF;}
+</style></head><body>
+<div class="bg"></div><div class="bg-img"></div><div class="grid"></div><div class="glow"></div>
+<div class="topbar"></div><div class="bottombar"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+<div class="layout">
+  <div class="logo-section">
+    <div class="logo-wrap"><img src="file:///home/runner/workspace/client/src/assets/logo.jpg" alt=""/></div>
+    <div class="outro-tag">◆ نظام إدارة أعضاء SCVA ◆</div>
+    <h2 class="outro-title">تواصل مع <span>المصمم</span></h2>
+  </div>
+  <div class="contact-card">
+    <div class="dev-avatar">👨‍💻</div>
+    <div class="dev-info">
+      <div class="dev-role">✦ &nbsp;مصمم ومطوّر النظام · Full-Stack Developer</div>
+      <div class="dev-name">إبراهيم الصيداوي</div>
+      <div class="dev-sub">متخصص في الأنظمة الرقمية المؤسسية</div>
+    </div>
+    <div class="vdiv"></div>
+    <div class="contact-links">
+      <div class="clink phone">
+        <div class="clink-icon">📞</div>
+        <div class="clink-info">
+          <div class="clink-label">رقم الهاتف</div>
+          <div class="clink-value">00963 933 706 403</div>
+        </div>
+      </div>
+      <div class="clink wa">
+        <div class="clink-icon">💬</div>
+        <div class="clink-info">
+          <div class="clink-label">واتساب — تواصل فوري</div>
+          <div class="clink-value">00963 933 706 403</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tagline">الرابطة السورية لأمراض وجراحة القلب &nbsp;·&nbsp; <strong>نظام إدارة الأعضاء</strong> &nbsp;·&nbsp; © 2025–2026</div>
+</div>
+</body></html>
