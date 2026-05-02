@@ -13,6 +13,40 @@ import {
 } from "@shared/schema";
 import { t, getLang } from "./i18n";
 
+// ── Value normalizers: accept translated (Arabic/English) OR raw enum values ─
+function normalizeGender(v: unknown): unknown {
+  const s = String(v ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    male: "male", ذكر: "male", م: "male",
+    female: "female", "أنثى": "female", "انثى": "female", "أنثي": "female", f: "female",
+  };
+  return map[s] ?? v;
+}
+function normalizeMembershipType(v: unknown): unknown {
+  const s = String(v ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    original: "original", "أصيل": "original", "اصيل": "original",
+    associate: "associate", "مشارك": "associate",
+  };
+  return map[s] ?? v;
+}
+function normalizeSpecialty(v: unknown): unknown {
+  const s = String(v ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    cardiology: "cardiology", "قلبية داخلية": "cardiology", "قلبية": "cardiology", cardiac: "cardiology",
+    cardiac_surgery: "cardiac_surgery", "cardiac surgery": "cardiac_surgery",
+    "جراحة قلب": "cardiac_surgery", "جراحة القلب": "cardiac_surgery",
+  };
+  return map[s] ?? v;
+}
+function normalizeMemberRow(row: Record<string, unknown>): Record<string, unknown> {
+  const r = { ...row };
+  if (r.gender      != null) r.gender       = normalizeGender(r.gender);
+  if (r.membershipType != null) r.membershipType = normalizeMembershipType(r.membershipType);
+  if (r.specialty   != null) r.specialty    = normalizeSpecialty(r.specialty);
+  return r;
+}
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -410,7 +444,7 @@ export async function registerRoutes(
         errors: [] as string[],
       };
       for (const row of rows) {
-        const parsed = insertMemberSchema.safeParse(row);
+        const parsed = insertMemberSchema.safeParse(normalizeMemberRow(row as Record<string, unknown>));
         if (!parsed.success) {
           results.failed++;
           results.errors.push(
@@ -447,6 +481,32 @@ export async function registerRoutes(
         }
       }
       res.json(results);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ---------- Subscriptions Excel Export ----------
+  app.get("/api/subscriptions/export", requireAuth, async (_req, res, next) => {
+    try {
+      const members = await storage.getMembers();
+      const subsMap = await storage.getSubscriptionsByMemberIds(members.map((m) => m.id));
+      const rows: object[] = [];
+      for (const m of members) {
+        const subs = subsMap.get(m.id) ?? [];
+        for (const s of subs) {
+          rows.push({
+            membershipNumber: m.membershipNumber,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            year: s.year,
+            amount: s.amount,
+            date: s.date,
+            notes: s.notes ?? "",
+          });
+        }
+      }
+      res.json(rows);
     } catch (err) {
       next(err);
     }

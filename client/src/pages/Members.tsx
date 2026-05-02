@@ -39,6 +39,7 @@ import {
 import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import { MEMBERSHIP_TYPES, SPECIALTIES } from "@/lib/types";
+import { MEMBER_COLUMNS } from "@/lib/importColumns";
 
 const ALL_VALUE = "__all__";
 
@@ -133,25 +134,43 @@ export default function Members() {
   }, [currentPage, totalPages]);
 
   const exportToExcel = () => {
-    const data = filteredMembers.map((m) => ({
-      [t("field.membershipNumber")]: m.membershipNumber,
-      [t("field.fullName")]: m.fullName,
-      [t("field.fatherName")]: m.fatherName,
-      [t("field.englishName")]: m.englishName,
-      [t("field.birthDate")]: m.birthDate,
-      [t("field.gender")]: t(`val.${m.gender}`),
-      [t("field.specialty")]: t(`val.${m.specialty}`),
-      [t("field.email")]: m.email,
-      [t("field.phone")]: m.phone,
-      [t("field.workAddress")]: m.workAddress,
-      [t("field.city")]: m.city ?? "",
-      [t("field.joinDate")]: m.joinDate,
-      [t("field.membershipType")]: t(`val.${m.membershipType}`),
+    // Use MEMBER_COLUMNS so headers match what the import parser expects
+    // (bilingual: Arabic when UI is Arabic, English when English).
+    // Values are always stored as raw enum strings so the file is importable as-is.
+    const colDefs = MEMBER_COLUMNS.map((c) => ({
+      key: c.key,
+      label: (isAr ? c.labelAr : c.labelEn).replace(" *", ""),
     }));
+
+    const data = filteredMembers.map((m) => {
+      const row: Record<string, unknown> = {};
+      for (const { key, label } of colDefs) {
+        switch (key) {
+          case "firstName":      row[label] = m.firstName ?? ""; break;
+          case "lastName":       row[label] = m.lastName ?? ""; break;
+          case "fullName":       row[label] = m.fullName ?? ""; break;
+          case "fatherName":     row[label] = m.fatherName ?? ""; break;
+          case "englishName":    row[label] = m.englishName ?? ""; break;
+          case "birthDate":      row[label] = m.birthDate ?? ""; break;
+          case "gender":         row[label] = m.gender ?? ""; break;
+          case "specialty":      row[label] = m.specialty ?? ""; break;
+          case "email":          row[label] = m.email ?? ""; break;
+          case "phone":          row[label] = m.phone ?? ""; break;
+          case "city":           row[label] = m.city ?? ""; break;
+          case "workAddress":    row[label] = m.workAddress ?? ""; break;
+          case "joinDate":       row[label] = m.joinDate ?? ""; break;
+          case "membershipType": row[label] = m.membershipType ?? ""; break;
+          case "escId":          row[label] = m.escId ?? ""; break;
+        }
+      }
+      return row;
+    });
+
     const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = colDefs.map(() => ({ wch: 22 }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Members");
-    XLSX.writeFile(wb, "SCVA_Members.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, isAr ? "الأعضاء" : "Members");
+    XLSX.writeFile(wb, isAr ? "اعضاء-SCVA.xlsx" : "SCVA-Members.xlsx");
   };
 
   return (

@@ -25,6 +25,7 @@ import {
   FileSpreadsheet, Download, Upload, DatabaseBackup,
   CheckCircle2, AlertCircle, X, Receipt,
 } from "lucide-react";
+import { MEMBER_COLUMNS, SUBSCRIPTION_COLUMNS, buildHeaderIndex } from "@/lib/importColumns";
 import { useState, useRef } from "react";
 import { z } from "zod";
 import * as XLSX from "xlsx";
@@ -46,65 +47,10 @@ function buildUserSchema(isAr: boolean) {
 }
 type UserFormValues = z.infer<ReturnType<typeof buildUserSchema>>;
 
-// Each column carries both Arabic and English labels. The downloaded template
-// uses the label that matches the current UI language so users can prepare
-// the file in whichever language they prefer. The import parser accepts EITHER
-// label, which keeps backward compatibility with files prepared earlier
-// (when the template was Arabic-only) and lets a user import a file that was
-// authored in a different language than the current UI.
-interface ImportColumn {
-  key: string;
-  labelAr: string;
-  labelEn: string;
-  exampleAr: string;
-  exampleEn: string;
-}
-
-const IMPORT_COLUMNS: ImportColumn[] = [
-  { key: "firstName",      labelAr: "الاسم الأول *",          labelEn: "First name *",            exampleAr: "محمد",                exampleEn: "Mohammad" },
-  { key: "lastName",       labelAr: "الكنية *",               labelEn: "Last name *",             exampleAr: "الأحمد",              exampleEn: "Al-Ahmad" },
-  { key: "fullName",       labelAr: "الاسم بالعربية",         labelEn: "Full name (Arabic)",      exampleAr: "محمد علي الأحمد",     exampleEn: "محمد علي الأحمد" },
-  { key: "fatherName",     labelAr: "اسم الأب",               labelEn: "Father's name",           exampleAr: "علي",                 exampleEn: "Ali" },
-  { key: "englishName",    labelAr: "الاسم بالإنجليزية",      labelEn: "Full name (English)",     exampleAr: "Mohammad Al-Ahmad",   exampleEn: "Mohammad Al-Ahmad" },
-  { key: "birthDate",      labelAr: "تاريخ الميلاد",          labelEn: "Date of birth",           exampleAr: "1985-06-15",          exampleEn: "1985-06-15" },
-  { key: "gender",         labelAr: "الجنس",                  labelEn: "Gender",                  exampleAr: "male",                exampleEn: "male" },
-  { key: "specialty",      labelAr: "التخصص",                 labelEn: "Specialty",               exampleAr: "cardiology",          exampleEn: "cardiology" },
-  { key: "email",          labelAr: "البريد الإلكتروني",      labelEn: "Email",                   exampleAr: "example@email.com",   exampleEn: "example@email.com" },
-  { key: "phone",          labelAr: "رقم الهاتف",             labelEn: "Phone",                   exampleAr: "0911234567",          exampleEn: "0911234567" },
-  { key: "city",           labelAr: "المدينة",                labelEn: "City",                    exampleAr: "دمشق",                exampleEn: "Damascus" },
-  { key: "workAddress",    labelAr: "عنوان العمل",            labelEn: "Work address",            exampleAr: "مستشفى المجتهد",      exampleEn: "Al-Mojtahed Hospital" },
-  { key: "joinDate",       labelAr: "تاريخ الانضمام",         labelEn: "Join date",               exampleAr: "2020-01-01",          exampleEn: "2020-01-01" },
-  { key: "membershipType", labelAr: "نوع العضوية",            labelEn: "Membership type",         exampleAr: "original",            exampleEn: "original" },
-  { key: "escId",          labelAr: "معرّف الجمعية الأوروبية",labelEn: "ESC ID",                  exampleAr: "",                    exampleEn: "" },
-];
-
-const SUB_IMPORT_COLUMNS: ImportColumn[] = [
-  { key: "membershipNumber", labelAr: "رقم العضوية",    labelEn: "Membership number",  exampleAr: "1",          exampleEn: "1" },
-  { key: "firstName",        labelAr: "الاسم الأول",    labelEn: "First name",         exampleAr: "محمد",       exampleEn: "Mohammad" },
-  { key: "lastName",         labelAr: "الكنية",         labelEn: "Last name",          exampleAr: "الأحمد",     exampleEn: "Al-Ahmad" },
-  { key: "year",             labelAr: "سنة الاشتراك *", labelEn: "Subscription year *",exampleAr: "2024",       exampleEn: "2024" },
-  { key: "amount",           labelAr: "المبلغ (ل.س) *", labelEn: "Amount (SYP) *",     exampleAr: "50000",      exampleEn: "50000" },
-  { key: "date",             labelAr: "تاريخ الدفع *",  labelEn: "Payment date *",     exampleAr: "2024-03-15", exampleEn: "2024-03-15" },
-  { key: "notes",            labelAr: "ملاحظات",        labelEn: "Notes",              exampleAr: "دُفع نقداً", exampleEn: "Paid in cash" },
-];
-
-// Build a header -> column key lookup that accepts BOTH the Arabic and English
-// labels (trimmed, case-insensitive). This is what makes a file prepared in
-// one language importable while the UI is set to the other.
-function buildHeaderIndex(
-  headerRow: unknown[],
-  columns: ImportColumn[],
-): Record<string, number> {
-  const normalize = (v: unknown) => String(v ?? "").trim().toLowerCase();
-  const headers = headerRow.map(normalize);
-  const map: Record<string, number> = {};
-  for (const col of columns) {
-    const candidates = [normalize(col.labelAr), normalize(col.labelEn)];
-    const idx = headers.findIndex((h) => candidates.includes(h));
-    if (idx !== -1) map[col.key] = idx;
-  }
-  return map;
-}
+// IMPORT_COLUMNS and SUB_IMPORT_COLUMNS are now in @/lib/importColumns (shared with export)
+// Alias them locally for backward-compat with the rest of this file.
+const IMPORT_COLUMNS = MEMBER_COLUMNS;
+const SUB_IMPORT_COLUMNS = SUBSCRIPTION_COLUMNS;
 
 interface ImportResult {
   success: number;
@@ -200,6 +146,21 @@ export default function Settings() {
     subResults:   isAr ? "نتائج استيراد الاشتراكات" : "Subscriptions import results",
     subTplDl:     isAr ? "تم تحميل نموذج الاشتراكات" : "Subscriptions template downloaded",
     subImpDone:   isAr ? "اكتمل استيراد الاشتراكات" : "Subscriptions import complete",
+    // Subscriptions export
+    expSubs:      isAr ? "تصدير الاشتراكات" : "Export subscriptions",
+    expSubsD:     isAr ? "تصدير جميع اشتراكات الأعضاء في ملف Excel قابل لإعادة الاستيراد." : "Export all member subscriptions to an Excel file that can be re-imported.",
+    expSubsBtn:   isAr ? "تصدير Excel للاشتراكات" : "Export subscriptions Excel",
+    expSubsOk:    isAr ? "تم تصدير الاشتراكات" : "Subscriptions exported",
+    expSubsOkD:   isAr ? "تم تحميل ملف الاشتراكات بنجاح." : "Subscriptions file downloaded successfully.",
+    expSubsErr:   isAr ? "خطأ في تصدير الاشتراكات" : "Subscriptions export failed",
+    expSubsEmpty: isAr ? "لا توجد اشتراكات للتصدير" : "No subscriptions to export",
+    expMembers:   isAr ? "تصدير الأعضاء" : "Export members",
+    expMembersD:  isAr ? "تصدير قائمة الأعضاء في ملف Excel قابل لإعادة الاستيراد." : "Export the members list to an Excel file that can be re-imported.",
+    expMembersBtn:isAr ? "تصدير Excel للأعضاء" : "Export members Excel",
+    expMembersOk: isAr ? "تم تصدير الأعضاء" : "Members exported",
+    expMembersOkD:isAr ? "تم تحميل ملف الأعضاء بنجاح." : "Members file downloaded successfully.",
+    expMembersErr:isAr ? "خطأ في التصدير" : "Export failed",
+    exporting:    isAr ? "جارٍ التصدير..." : "Exporting...",
     // Backup
     backupTitle:  isAr ? "النسخ الاحتياطي" : "Backup",
     backupDesc:   isAr ? "تصدير نسخة احتياطية كاملة لجميع بيانات النظام (الأعضاء، الاشتراكات، المستخدمين)." : "Export a full backup of all system data (members, subscriptions, users).",
@@ -208,7 +169,6 @@ export default function Settings() {
     backupAllS:   isAr ? "سجلّات الاشتراكات السنوية" : "Annual subscription records",
     backupUsers:  isAr ? "قائمة المستخدمين (بدون كلمات المرور)" : "User list (without passwords)",
     backupNote:   isAr ? "يُحفظ الملف بصيغة JSON ويمكن الاستفادة منه للأرشفة أو استعادة البيانات مستقبلاً." : "The file is saved as JSON and can be used for archiving or future restore.",
-    exporting:    isAr ? "جارٍ التصدير..." : "Exporting...",
     exportBackup: isAr ? "تصدير نسخة احتياطية" : "Export backup",
     exportOk:     isAr ? "تم التصدير" : "Export complete",
     exportOkD:    isAr ? "تم تحميل النسخة الاحتياطية بنجاح." : "Backup downloaded successfully.",
@@ -227,6 +187,8 @@ export default function Settings() {
   const [subImportResult, setSubImportResult] = useState<ImportResult | null>(null);
   const [isSubImporting, setIsSubImporting] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isExportingMembers, setIsExportingMembers] = useState(false);
+  const [isExportingSubs, setIsExportingSubs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const subFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -491,6 +453,74 @@ export default function Settings() {
     } finally {
       setIsSubImporting(false);
       if (subFileInputRef.current) subFileInputRef.current.value = "";
+    }
+  };
+
+  // ---- Members Excel export ----
+  const handleExportMembers = async () => {
+    setIsExportingMembers(true);
+    try {
+      const res = await apiRequest("GET", "/api/members");
+      const members: Record<string, unknown>[] = await res.json();
+      if (!members.length) {
+        toast({ title: L.expMembersOk, description: L.expSubsEmpty });
+        return;
+      }
+      const colDefs = IMPORT_COLUMNS.map((c) => ({
+        key: c.key,
+        label: (isAr ? c.labelAr : c.labelEn).replace(" *", ""),
+      }));
+      const data = members.map((m) => {
+        const row: Record<string, unknown> = {};
+        for (const { key, label } of colDefs) {
+          row[label] = m[key] ?? "";
+        }
+        return row;
+      });
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws["!cols"] = colDefs.map(() => ({ wch: 22 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, isAr ? "الأعضاء" : "Members");
+      XLSX.writeFile(wb, isAr ? "اعضاء-SCVA.xlsx" : "SCVA-Members.xlsx");
+      toast({ title: L.expMembersOk, description: L.expMembersOkD });
+    } catch {
+      toast({ title: L.expMembersErr, variant: "destructive" });
+    } finally {
+      setIsExportingMembers(false);
+    }
+  };
+
+  // ---- Subscriptions Excel export ----
+  const handleExportSubs = async () => {
+    setIsExportingSubs(true);
+    try {
+      const res = await apiRequest("GET", "/api/subscriptions/export");
+      const rows: Record<string, unknown>[] = await res.json();
+      if (!rows.length) {
+        toast({ title: L.expSubsOk, description: L.expSubsEmpty });
+        return;
+      }
+      const colDefs = SUB_IMPORT_COLUMNS.map((c) => ({
+        key: c.key,
+        label: (isAr ? c.labelAr : c.labelEn).replace(" *", ""),
+      }));
+      const data = rows.map((r) => {
+        const row: Record<string, unknown> = {};
+        for (const { key, label } of colDefs) {
+          row[label] = r[key] ?? "";
+        }
+        return row;
+      });
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws["!cols"] = colDefs.map(() => ({ wch: 22 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, isAr ? "الاشتراكات" : "Subscriptions");
+      XLSX.writeFile(wb, isAr ? "اشتراكات-SCVA.xlsx" : "SCVA-Subscriptions.xlsx");
+      toast({ title: L.expSubsOk, description: L.expSubsOkD });
+    } catch {
+      toast({ title: L.expSubsErr, variant: "destructive" });
+    } finally {
+      setIsExportingSubs(false);
     }
   };
 
@@ -850,6 +880,68 @@ export default function Settings() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ===== Members Excel Export ===== */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20">
+              <FileSpreadsheet className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{L.expMembers}</CardTitle>
+              <CardDescription>{L.expMembersD}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleExportMembers}
+            disabled={isExportingMembers}
+            variant="outline"
+            className="gap-2"
+            data-testid="button-export-members"
+          >
+            {isExportingMembers ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExportingMembers ? L.exporting : L.expMembersBtn}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ===== Subscriptions Excel Export ===== */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{L.expSubs}</CardTitle>
+              <CardDescription>{L.expSubsD}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleExportSubs}
+            disabled={isExportingSubs}
+            variant="outline"
+            className="gap-2"
+            data-testid="button-export-subscriptions"
+          >
+            {isExportingSubs ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExportingSubs ? L.exporting : L.expSubsBtn}
+          </Button>
         </CardContent>
       </Card>
 
